@@ -1,0 +1,110 @@
+#package main
+
+#import fmt "std:fmt"
+
+proc test(x: X) bool {
+	var a := 42;
+	a as uint; // cast
+
+
+
+
+	var d : union{int, bool} = true;
+	var res = switch d {
+		x: int if x == 1 do true,
+		x: bool          do x,
+		else             do false,
+	};
+
+	var d: union{int} = 0;
+	var res = switch d {
+		x: int do fmt.println("int %v", x);
+		else   do fmt.println("null");
+	}
+
+	var x = 1;
+	switch x {
+		2, 3  do println("foo"),
+		1..10 do println("aaa"),
+	}
+	if  x as bool do println("aaa");
+	for i in 0..1 do println("%v", i);
+	if  true do println("aaa"); else do println("bbb");
+}
+
+#import t "core:type"
+
+proc print_struct(s: any) {
+	switch s.info {
+		x: t.Named  {
+			fmt.print("struct %s { ", x.name);
+			x := x.inner as t.Struct; // union cast returns union{T}
+			assert(x != null); // union{T} can be compared to null
+			// x is T here
+			print_fields(x);
+			fmt.println("}");
+		}
+		x: t.Struct {
+			fmt.print("struct { ");
+			print_fields(x);
+			fmt.println("}");
+		}
+	}
+}
+
+proc print_fields(s: t.Struct) {
+	assert(s.fields >= 1);
+	fmt.println("%s", s.names[0]);
+	for i in 1..s.fields {
+		fmt.println(", %s", s.names[i]);
+	}
+}
+
+
+
+//
+//
+//	Trait-ish
+//
+//
+
+type Arith(T: type) struct {
+	add: proc(a, b: T) T;
+	sub: proc(a, b: T) T;
+	mul: proc(a, b: T) T;
+	div: proc(a, b: T) T;
+}
+
+
+
+const i32Arith = new Arith(i32) {
+	add: proc(a, b: i32) i32 { return a + b; },
+	sub: proc(a, b: i32) i32 { return a - b; },
+	mul: proc(a, b: i32) i32 { return a * b; },
+	div: proc(a, b: i32) i32 { return a / b; },
+};
+
+proc stuff(
+	const arith: Arith(const T: type)),
+	a, b: T
+) T {
+	return arith.add(a, arith.mul(b, b));
+}
+
+foo test() {
+	fmt.println("%s", stuff(i32Arith, 2.-, 7));
+}
+
+//
+//
+//	Alias & Type
+//
+//
+
+proc test_types() {
+	type  MyInt    int;
+	alias IntAlias int;
+
+	assert(typeid(MyInt) != typeid(int));
+	assert(typeid(IntAlias) == typeid(int));
+}

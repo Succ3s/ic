@@ -1,0 +1,139 @@
+(*
+
+[] = optional
+{} = one or more
+
+
+
+TODO:
+- depency arrow (should it really be an arrow?)
+- (maybe) auto tuples (like go, and odin)
+- (maybe) vector types (like glsl, hlsl)
+- attrs
+	- they will only exist in the ast, no way to query them at runtime
+	- '@' ident '(' ? anything ? ')'
+- labels (break, continue)
+- expression precedence
+- literals
+- (maybe) operator overloading
+	- procedure must be pure
+*)
+
+
+ident = ? TODO ?;
+
+file = package, { item };
+
+package = "#package", ident;
+
+item = import
+	|  typeDef
+	|  proc
+	|  impl
+	|  decl;
+
+import = "#import", importCapture, stringLit;
+importCap = ( ident, [",", "{", [ ident, { ",", ident } ], "}" ])
+	|                    ( "{", [ ident, { ",", ident } ], "}"  );
+
+typeDef = "type" | "alias", ident,
+	( typesWithoutBlock, ";" ) | ( typesWithBlock [";"] );
+
+proc = "proc", ident, "(", [argDef, {",", argDef}] ")", [type], ";" | blockWithDo;
+argDef = ident, { ",", ident }, ":", type;
+
+decl = "const" | "var", ident, [ ":", type ], [ "=", expr ], ";";
+
+
+
+
+type = typesWithoutBlock | typesWithBlock;
+typesWithoutBlock = namedType
+	|               ptrType
+	|               sliceType
+	|               arrayType
+	|               procType;
+namedType = ident;
+ptrType   = "*" type;
+sliceType = "[" "]" type;
+arrayType = "[" expr "]" type;
+procType  = "proc", "(", [argDef, {",", argDef}], ")", [type];
+
+typesWithBlock = struct
+	|            union
+	|            enum;
+struct   = "struct" "{" argDef "}";
+union    = "union", "{", [ type, { ",", type } ], "}";
+enum     = "enum", "{" [ enumKey, { ",", enumKey } ], "}";
+enumKey  = ident, [ "=" expr ];
+
+
+
+
+blockWithDo = ( "do", stmt ) | block;
+block = "{", { stmt }, "}";
+
+
+
+
+
+stmt = item
+	|  for
+	|  exprStmt
+	|  "return", expr, ";"
+	|  "break" ";"
+	|  "continue" ";"
+	;
+
+for      = "for", [ ident, [ ",", ident ], "in" ], expr, blockWithDo;
+exprStmt = exprWithBlock | ( exprWithoutBlock, ";" );
+
+
+
+
+
+
+
+
+expr = exprWithoutBlock | exprWithBlock;
+
+exprWithoutBlock = infix | postfix | prefix | literals;
+infix = expr, "+",     expr
+	|   expr, "-",     expr
+	|   expr, "*",     expr
+	|   expr, "/",     expr
+
+	|   expr, ">",      expr
+	|   expr, "<",      expr
+	|   expr, "==",     expr
+	|   expr, ">=",     expr
+	|   expr, "<=",     expr
+
+	|   expr, "or",     expr
+	|   expr, "and",    expr
+
+	|   expr, "..",     expr
+	|   expr, "..<",    expr
+	|   expr, "orelse", expr
+	|   expr, "as",     type;
+postfix = expr ".-"
+	|     expr ".*"
+	|     expr ".&"
+	|     expr "(" [ expr { "," expr } ] ")"
+	|     expr "[" expr "]";
+prefix = "not" expr;
+literals = number | ident | char | string | "(" expr ")";
+
+exprWithBlock = block
+	|           if
+	|           switch
+	|           procExpr;
+if = "if" expr, blockWithDo,
+	{ "else", [ "if", expr ], blockWithDo };
+switch = "switch", expr, "{", {switchBranch} "}";
+switchBranch = switchCase, blockWithDo;
+switchCase = "else"
+	|        ident ":" type switchIf,
+	|        expr, [switchIf], { ",", expr, [switchIf] };
+switchIf = "if", expr;
+procExpr = "proc", "(", [argDef, {",", argDef}], ")", [type], blockWithDo;
