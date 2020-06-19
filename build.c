@@ -13,14 +13,14 @@ int main() {
 	Lexer lex = lexBuild(newString("#package 10\n"           // error 
 	                               "#import \"foo\"\n"       // error
 	                               "#import bar 10\n"        // error
-	                               "#import { foo \"foo\"\n" // error
 	                               "#import bar \"bar\"\n"   // ok
 	                               "alias false\n"           // error
 	                               "type foo aaa\n"          // error
 	                               "type bar aaa;\n"         // ok
 	                               "type baz *aaa;\n"        // ok
 	                               "type fo1 []aa;\n"        // ok
-	                               "type fo2 [10]aa;\n"      // error, precisa fazer o parser de expr :peens
+	                               "type fo3 struct {}"
+	                               // "type fo2 [10]aa;\n"      // error, precisa fazer o parser de expr :peens
 	));
 	Parser p = (Parser) {
 		.allocator = &al,

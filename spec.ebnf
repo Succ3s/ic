@@ -6,6 +6,7 @@
 
 
 TODO:
+- make sure noNullType rule isn't wrong
 - depency arrow (should it really be an arrow?)
 - (maybe) auto tuples (like go, and odin)
 - (maybe) vector types (like glsl, hlsl)
@@ -32,9 +33,7 @@ item = import
 	|  impl
 	|  decl;
 
-import = "#import", importCapture, stringLit;
-importCap = ( ident, [",", "{", [ ident, { ",", ident } ], "}" ])
-	|                    ( "{", [ ident, { ",", ident } ], "}"  );
+import = "#import", ident, stringLit;
 
 typeDef = "type" | "alias", ident,
 	( typesWithoutBlock, ";" ) | ( typesWithBlock [";"] );
@@ -49,11 +48,17 @@ decl = "const" | "var", ident, [ ":", type ], [ "=", expr ], ";";
 
 type = typesWithoutBlock | typesWithBlock;
 typesWithoutBlock = namedType
+	|               noNullType
 	|               ptrType
 	|               sliceType
 	|               arrayType
 	|               procType;
 namedType = ident;
+noNullType = "!",   ptrType
+	|               namedType (* cstring, string, any, anyptr *)
+    |               procType
+    |               sliceType
+    |               arrayType;
 ptrType   = "*" type;
 sliceType = "[" "]" type;
 arrayType = "[" expr "]" type;
@@ -62,9 +67,9 @@ procType  = "proc", "(", [argDef, {",", argDef}], ")", [type];
 typesWithBlock = struct
 	|            union
 	|            enum;
-struct   = "struct" "{" argDef "}";
-union    = "union", "{", [ type, { ",", type } ], "}";
-enum     = "enum", "{" [ enumKey, { ",", enumKey } ], "}";
+struct   = "struct", "{", [ argDef, { ",", argDef } ],   "}";
+union    = "union",  "{", [ type, { ",", type } ],       "}";
+enum     = "enum",   "{", [ enumKey, { ",", enumKey } ], "}";
 enumKey  = ident, [ "=" expr ];
 
 

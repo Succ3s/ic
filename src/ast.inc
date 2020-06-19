@@ -37,7 +37,6 @@ AST(Item, item, AstItem,
 GLOBAL(ChunkedListImpl(cstring, 8))
 AST(Import, import, AstImport,
 	cstring namespace;
-	ChunkedList(cstring, 8) global;
 	cstring path;
 })
 
@@ -115,8 +114,6 @@ AST(Type, type, AstType,
 GLOBAL(typedef AstExpr* AstExprPtr;)
 // GLOBAL(ChunkedListImpl(AstExprPtr, 8))
 AST(Struct, _struct, AstStruct,
-	// ChunkedList(cstring, 8)      names;
-	// ChunkedList(AstExprPtr, 8)  types;
 	ChunkedList(ProcArguments, 4) fields;
 })
 

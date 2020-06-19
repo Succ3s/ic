@@ -1,3 +1,5 @@
+#include <string.h>
+
 #define errMessage(var, msg)              \
 const char* var = msg;                    \
 const usize sizeof_ ## var = sizeof(msg);
@@ -25,6 +27,7 @@ AstType*    parseType(Parser* p);
 AstType*    parseTypeWithoutBlock(Parser* p);
 AstType*    parseTypeWithBlock(Parser* p);
 AstExpr*    parseExpr(Parser* p);
+ChunkedList(ProcArguments, 4) parseArguments(Parser* p);
 
 AstFile* parse(Parser* p) {
 	AstFile* a = allocator_alloc(p->allocator, sizeof(AstFile));
@@ -76,46 +79,28 @@ AstItem* parseItem(Parser* p) {
 		case TkKwHashImport: {
 			lexNext(p->lex);
 
-			Token nxt = lexNext(p->lex);
 
-			AstItem* item = allocator_alloc(
-				p->allocator,
-				sizeof(AstItem) + sizeof(AstImport) + sizeof(Location)
-			);
-			AstImport* import = (AstImport*) ((u8*)item   + sizeof(AstItem));
+			usize allocationSize = sizeof(AstItem) + sizeof(AstImport) + sizeof(Location);
+			AstItem* item = allocator_alloc(p->allocator, allocationSize);
+			memset(item, 0, allocationSize);
+
+
+			AstImport* import = (AstImport*) (item + 1);
 			item->item.import = import;
-			item->loc         = (Location*)  ((u8*)import + sizeof(AstImport));
+
 			item->itemKind = ItemKindImport;
+			// NOTE(pgs): redundant Locations
+			item->loc         = (Location*)  (import + 1);
 			import->loc       = item->loc;
 			item->loc->begin = fst.begin;
 
+			Token nxt = lexNext(p->lex);
 			switch(nxt.tok) {
 				case TkLitIdent:
 					import->namespace = stringToCString(p->allocator, nxt.str);
-					if(lexPeek(p->lex).tok != TkComma) { break; }
-					lexNext(p->lex);
-					if(lexPeek(p->lex).tok != TkOpenBrace) { break; }
-					lexNext(p->lex);
-					/* FALLTROUGH */
-				case TkOpenBrace:
-					for(;lexPeek(p->lex).tok == TkLitIdent;) {
-						ChunkedList_push(cstring, 8)(
-							&import->global, p->allocator,
-							stringToCString(p->allocator, lexNext(p->lex).str)
-						);
-						if(lexPeek(p->lex).tok != TkComma) {
-							break;
-						}
-					}
-					if(lexPeek(p->lex).tok != TkCloseBrace) {
-						Token err = lexNext(p->lex);
-						makeErrUnexpected(TkCloseBrace, err.tok, (Location) { err.begin, err.end });
-						item->loc->end = err.end;
-						return item;
-					}
 					break;
-				case TkLitString:
-					// nice error
+				case TkLitString: // nice error
+
 					parserPushErr(p, (Error) {
 						.lvl = ErrorLevelError,
 						.loc = (Location) { nxt.begin, nxt.end },
@@ -130,23 +115,8 @@ AstItem* parseItem(Parser* p) {
 
 					item->loc->end = nxt.end;
 					return item;
-
 				default: {
-					cstring expected0 = tokenToCString(TkLitIdent);
-					cstring expected1 = tokenToCString(TkOpenBrace);
-					cstring got       = tokenToCString(nxt.tok);
-					cstring str      = allocator_alloc(
-						p->allocator,
-						sizeof_errUnexpected + strlen(expected0) + strlen(expected1) + strlen(got)
-					);
-					sprintf(str, errUnexpected2, expected0, expected1, got);
-					parserPushErr(p, (Error) {
-						.lvl = ErrorLevelError,
-						.loc = (Location) { nxt.begin, nxt.end },
-						.msg = newString(str),
-					});
-
-					*import = (AstImport) {0};
+					makeErrUnexpected(TkLitIdent, nxt.tok, (Location) { nxt.begin, nxt.end });
 					item->loc->end = nxt.end;
 					return item;
 				}
@@ -157,7 +127,7 @@ AstItem* parseItem(Parser* p) {
 
 			if(path.tok != TkLitString) {
 				makeErrUnexpected(TkLitString, path.tok, (Location) { path.begin, path.end });
-				import->path = 0;
+
 				return item;
 			}
 
@@ -178,11 +148,11 @@ AstItem* parseItem(Parser* p) {
 				p->allocator,
 				sizeof(AstItem) + sizeof(AstTypeDecl) + sizeof(Location)
 			);
-			AstTypeDecl* tDecl  = (AstTypeDecl*) ((u8*)item + sizeof(AstItem));
+			AstTypeDecl* tDecl  = (AstTypeDecl*) (item + 1);
 			tDecl->isAlias = isAlias;
 			item->itemKind      = ItemKindTypeDecl;
 			item->item.typeDecl = tDecl;
-			item->loc           = (Location*) ((u8*)tDecl + sizeof(AstTypeDecl));
+			item->loc           = (Location*) (tDecl + 1);
 			tDecl->loc          = item->loc;
 			item->loc->begin    = fst.begin;
 
@@ -206,11 +176,13 @@ AstItem* parseItem(Parser* p) {
 				}
 				goto nosemicolon;
 			}
-			Token semic = lexNext(p->lex);
+			Token semic = lexPeek(p->lex);
 			if(semic.tok != TkSemiColon) {
 				makeErrUnexpected(TkSemiColon, semic.tok, (Location) { semic.begin, semic.end });
 				item->loc->end = semic.end;
+				return item;
 			}
+			lexNext(p->lex);
 			nosemicolon:
 
 			tDecl->type = t;
@@ -233,6 +205,8 @@ AstType* parseType(Parser* p) {
 	return t;
 }
 
+
+// TODO(pgs): proc type
 AstType* parseTypeWithoutBlock(Parser* p) {
 	Token fst = lexPeek(p->lex);
 	switch(fst.tok) {
@@ -245,7 +219,7 @@ AstType* parseTypeWithoutBlock(Parser* p) {
 			);
 			type->typeKind      = TypeKindNamed;
 			type->type.named    = stringToCString(p->allocator, fst.str);
-			type->loc           = (Location*) ((u8*)type + sizeof(AstType));
+			type->loc           = (Location*) (type + 1);
 			*type->loc          = (Location ) { fst.begin, fst.end };
 			return type;
 		}
@@ -264,7 +238,7 @@ AstType* parseTypeWithoutBlock(Parser* p) {
 			);
 			type->typeKind      = TypeKindPointer;
 			type->type.ptr      = typ;
-			type->loc           = (Location*) ((u8*)type + sizeof(AstType));
+			type->loc           = (Location*) (type + 1);
 			*type->loc          = (Location ) { fst.begin, typ->loc->end };
 			return type;
 		}
@@ -287,7 +261,7 @@ AstType* parseTypeWithoutBlock(Parser* p) {
 					);
 					type->typeKind      = TypeKindSlice;
 					type->type.slice    = typ;
-					type->loc           = (Location*) ((u8*)type + sizeof(AstType));
+					type->loc           = (Location*) (type + 1);
 					*type->loc          = (Location ) { fst.begin, typ->loc->end };
 					return type;
 				}
@@ -317,7 +291,7 @@ AstType* parseTypeWithoutBlock(Parser* p) {
 						.inner = expr,
 						.type  = typ,
 					};
-					type->loc  = (Location*) ((u8*)type + sizeof(AstType));
+					type->loc  = (Location*) (type + 1);
 					*type->loc = (Location ) { fst.begin, typ->loc->end };
 					return type;
 				}
@@ -329,9 +303,58 @@ AstType* parseTypeWithoutBlock(Parser* p) {
 
 
 AstType* parseTypeWithBlock(Parser* p) {
-	return null;
+	Token fst = lexPeek(p->lex);
+	switch(fst.tok) {
+		case TkKwStruct: {
+			lexNext(p->lex);
+
+			usize allocSize = sizeof(AstType) + sizeof(AstStruct) + sizeof(Location);
+			AstType* type = allocator_alloc(p->allocator, allocSize);
+			memset(type, 0, allocSize);
+
+			AstStruct* strct   = (AstStruct*) (type + 1);
+			type->typeKind     = TypeKindStruct;
+			type->type._struct = strct;
+
+			type->loc  = (Location*) (strct + 1);
+			strct->loc = type->loc;
+
+			type->loc->begin = fst.begin;
+
+
+
+			Token tmp = lexPeek(p->lex);
+			if(tmp.tok != TkOpenBrace) {
+				makeErrUnexpected(TkOpenBrace, tmp.tok, (Location) { tmp.begin, tmp.end });
+				type->loc->end = tmp.end;
+				return type;
+			}
+			lexNext(p->lex);
+
+
+
+			strct->fields = parseArguments(p);
+
+
+			tmp = lexPeek(p->lex);
+			type->loc->end = tmp.end;
+			if(lexPeek(p->lex).tok != TkCloseBrace) {
+				makeErrUnexpected(TkCloseBrace, tmp.tok, (Location) { tmp.begin, tmp.end });
+				return type;
+			}
+			lexNext(p->lex);
+
+			return type;
+		}
+		default: return null;
+	}
 }
 
 AstExpr* parseExpr(Parser* p) {
 	return null;
+}
+
+
+ChunkedList(ProcArguments, 4) parseArguments(Parser* p) {
+	return (ChunkedList(ProcArguments, 4)) {0};
 }
