@@ -5,7 +5,7 @@
 #include "lex.h"
 #include "token.h"
 
-ChunkedListImpl(Error, 8);
+ChunkedListImpl(Error, 8)
 
 #define PARSE_FAILED    (1 << 0)
 #define PARSE_NOPACKAGE (1 << 1)

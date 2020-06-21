@@ -9,15 +9,13 @@ TODO:
 - make sure noNullType rule isn't wrong
 - depency arrow (should it really be an arrow?)
 - (maybe) auto tuples (like go, and odin)
-- (maybe) vector types (like glsl, hlsl)
+- (maybe) vector types (like glsl, and hlsl)
 - attrs
 	- they will only exist in the ast, no way to query them at runtime
 	- '@' ident '(' ? anything ? ')'
 - labels (break, continue)
 - expression precedence
 - literals
-- (maybe) operator overloading
-	- procedure must be pure
 *)
 
 
@@ -30,7 +28,6 @@ package = "#package", ident;
 item = import
 	|  typeDef
 	|  proc
-	|  impl
 	|  decl;
 
 import = "#import", ident, stringLit;
@@ -39,7 +36,8 @@ typeDef = "type" | "alias", ident,
 	( typesWithoutBlock, ";" ) | ( typesWithBlock [";"] );
 
 proc = "proc", ident, "(", [argDef, {",", argDef}] ")", [type], ";" | blockWithDo;
-argDef = ident, { ",", ident }, ":", type;
+argDef = ident ":" type;
+(* argDef = ident, { ",", ident }, ":", type; *)
 
 decl = "const" | "var", ident, [ ":", type ], [ "=", expr ], ";";
 

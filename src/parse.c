@@ -27,7 +27,7 @@ AstType*    parseType(Parser* p);
 AstType*    parseTypeWithoutBlock(Parser* p);
 AstType*    parseTypeWithBlock(Parser* p);
 AstExpr*    parseExpr(Parser* p);
-ChunkedList(ProcArguments, 4) parseArguments(Parser* p);
+ChunkedList(ProcArguments, 4) parseArguments(Parser* p, TokenKey separator);
 
 AstFile* parse(Parser* p) {
 	AstFile* a = allocator_alloc(p->allocator, sizeof(AstFile));
@@ -71,6 +71,8 @@ AstPackage* parsePackage(Parser* p) {
 }
 
 
+// TODO(pgs): proc
+// TODO(pgs): decl
 AstItem* parseItem(Parser* p) {
 	Token fst = lexPeek(p->lex);
 	bool isAlias = false; // line 161
@@ -172,6 +174,7 @@ AstItem* parseItem(Parser* p) {
 				t = parseTypeWithBlock(p);
 				if(t == null) {
 					// TODO(pgs): handle error
+					printf("expected type\n");
 					abort();
 				}
 				goto nosemicolon;
@@ -207,6 +210,7 @@ AstType* parseType(Parser* p) {
 
 
 // TODO(pgs): proc type
+// TODO(pgs): nonull type
 AstType* parseTypeWithoutBlock(Parser* p) {
 	Token fst = lexPeek(p->lex);
 	switch(fst.tok) {
@@ -333,7 +337,125 @@ AstType* parseTypeWithBlock(Parser* p) {
 
 
 
-			strct->fields = parseArguments(p);
+			strct->fields = parseArguments(p, TkComma);
+
+
+			tmp = lexPeek(p->lex);
+			type->loc->end = tmp.end;
+			if(lexPeek(p->lex).tok != TkCloseBrace) {
+				makeErrUnexpected(TkCloseBrace, tmp.tok, (Location) { tmp.begin, tmp.end });
+				return type;
+			}
+			lexNext(p->lex);
+
+			return type;
+		}
+		case TkKwUnion: {
+			lexNext(p->lex);
+
+
+			usize allocSize = sizeof(AstType) + sizeof(AstUnion) + sizeof(Location);
+			AstType* type = allocator_alloc(p->allocator, allocSize);
+			memset(type, 0, allocSize);
+
+			AstUnion* unin     = (AstUnion*) (type + 1);
+			type->typeKind     = TypeKindUnion;
+			type->type._union  = unin;
+
+			type->loc  = (Location*) (unin + 1);
+			unin->loc  = type->loc;
+
+			type->loc->begin = fst.begin;
+
+
+
+
+			Token tmp = lexPeek(p->lex);
+			if(tmp.tok != TkOpenBrace) {
+				makeErrUnexpected(TkOpenBrace, tmp.tok, (Location) { tmp.begin, tmp.end });
+				type->loc->end = tmp.end;
+				return type;
+			}
+			lexNext(p->lex);
+
+
+			ChunkedList(AstType, 4) types = {0};
+			for(;;) {
+				AstType* t = parseType(p);
+				if(t == null) { break; }
+				ChunkedList_push(AstType, 4)(&types, p->allocator, *t);
+				if(lexPeek(p->lex).tok != TkComma) { break; }
+				lexNext(p->lex);
+			}
+			unin->types = types;
+
+			tmp = lexPeek(p->lex);
+			type->loc->end = tmp.end;
+			if(lexPeek(p->lex).tok != TkCloseBrace) {
+				makeErrUnexpected(TkCloseBrace, tmp.tok, (Location) { tmp.begin, tmp.end });
+				return type;
+			}
+			lexNext(p->lex);
+
+			return type;		
+		}
+		case TkKwEnum: {
+			lexNext(p->lex);
+
+			usize allocSize = sizeof(AstType) + sizeof(AstEnum) + sizeof(Location);
+			AstType* type = allocator_alloc(p->allocator, allocSize);
+			memset(type, 0, allocSize);
+
+			AstEnum* enm       = (AstEnum*) (type + 1);
+			type->typeKind     = TypeKindEnum;
+			type->type._enum   = enm;
+
+			type->loc  = (Location*) (enm + 1);
+			enm->loc = type->loc;
+
+			type->loc->begin = fst.begin;
+
+			Token tmp = lexPeek(p->lex);
+			if(tmp.tok != TkOpenBrace) {
+				makeErrUnexpected(TkOpenBrace, tmp.tok, (Location) { tmp.begin, tmp.end });
+				type->loc->end = tmp.end;
+				return type;
+			}
+			lexNext(p->lex);
+
+
+
+
+
+			ChunkedList(EnumKey, 8) fields = {0};
+			for(;;) {
+				EnumKey key = {0};
+				Token tmp = lexPeek(p->lex);
+				if(tmp.tok != TkLitIdent) { break; }
+				key.field = stringToCString(p->allocator, tmp.str);
+				lexNext(p->lex);
+
+
+				tmp = lexPeek(p->lex);
+				if(tmp.tok != TkEq) { goto noexpr; }
+				lexNext(p->lex);
+
+				AstExpr* expr = parseExpr(p);
+				if(expr == null) {
+					// TODO(pgs): handle error
+					printf("expected expr\n");
+					abort();
+				}
+				key.expr = expr;
+
+				noexpr:
+				if(lexPeek(p->lex).tok != TkComma) { break; }
+				lexNext(p->lex);
+				ChunkedList_push(EnumKey, 8)(&fields, p->allocator, key);
+			}
+			enm->fields = fields;
+
+
 
 
 			tmp = lexPeek(p->lex);
@@ -354,7 +476,37 @@ AstExpr* parseExpr(Parser* p) {
 	return null;
 }
 
+ChunkedList(ProcArguments, 4) parseArguments(Parser* p, TokenKey separator) {
+	// return (ChunkedList(ProcArguments, 4)) {0};
+	ChunkedList(ProcArguments, 4) args = {0};
+	for(;;) {
+		ProcArguments arg = {0};
 
-ChunkedList(ProcArguments, 4) parseArguments(Parser* p) {
-	return (ChunkedList(ProcArguments, 4)) {0};
+		Token tmp = lexPeek(p->lex);
+		if(tmp.tok != TkLitIdent) { break; }
+		arg.name = stringToCString(p->allocator, tmp.str);
+		lexNext(p->lex);
+
+
+		if(lexPeek(p->lex).tok != TkColon) {
+			// TODO(pgs): handle error
+			printf("expected colon\n");
+			abort();
+		}
+		lexNext(p->lex);
+
+		AstType* t = parseType(p);
+		if(t == null) {
+			// TODO(pgs): handle error
+			printf("expected type\n");
+			abort();
+		}
+		arg.type = t;
+
+		ChunkedList_push(ProcArguments, 4)(&args, p->allocator, arg);
+
+		if(lexPeek(p->lex).tok != separator) { break; }
+		lexNext(p->lex);
+	}
+	return args;
 }

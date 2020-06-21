@@ -23,7 +23,6 @@ proc test_null_safety() {
 	var _4 = new Foo { x.y.z = v.&  }; // ok
 }
 
-
 proc test(x: X) bool {
 	var a := 42;
 	a as uint; // cast

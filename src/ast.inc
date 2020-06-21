@@ -123,8 +123,13 @@ AST(Union, _union, AstUnion,
 })
 
 
+GLOBAL(typedef struct {
+	cstring field;
+	AstExpr* expr;
+} EnumKey;)
+GLOBAL(ChunkedListImpl(EnumKey, 8))
 AST(Enum, _enum, AstEnum,
-	ChunkedList(cstring, 8) fields;
+	ChunkedList(EnumKey, 8) fields;
 })
 
 AST(ProcType, procType, AstProcType,
