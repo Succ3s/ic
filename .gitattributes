@@ -1,0 +1,4 @@
+# inc = include
+*.inc linguist-language=C
+# header files
+*.h   linguist-language=C

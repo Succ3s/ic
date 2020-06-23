@@ -2,6 +2,7 @@
 #include "token.h"
 #include <ctype.h>
 
+
 Lexer lexBuild(string s) {
 	return (Lexer) {
 		.line = 1, .column = 0,
@@ -55,6 +56,7 @@ Token lexNext(Lexer* lex) {
 				case '-': lexNextChar(lex); return buildToken(TkDotMinus);
 				case '*': lexNextChar(lex); return buildToken(TkDotStar);
 				case '&': lexNextChar(lex); return buildToken(TkDotAmpersand);
+				case '!': lexNextChar(lex); return buildToken(TkDotBang);
 				case '.':
 					lexNextChar(lex);
 					if(lexPeekChar(lex, 0) == '<') {

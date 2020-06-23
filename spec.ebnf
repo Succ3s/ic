@@ -94,26 +94,45 @@ exprStmt = exprWithBlock | ( exprWithoutBlock, ";" );
 
 
 
+(*
 
+10.??? :: number, ident, string, char, group
+9.ltr  :: ., call, index, .-, .*, .&, .!, new, exprWithBlock
+8.ltr  :: as
+7.ltr  :: *, /, %
+6.ltr  :: +, -
+5.ltr  :: ==, !=
+4.ltr  :: >, <, >=, <=
+3.ltr  :: and
+2.ltr  :: or
+1.ltr  :: orelse, .., ..<
+0.rtl  :: =, +=, -=, *=, /=, %=
+
+*)
 
 
 
 expr = exprWithoutBlock | exprWithBlock;
 
-exprWithoutBlock = infix | postfix | prefix | literals;
+exprWithoutBlock = infix | postfix | literals;
 infix = expr, "+",     expr
 	|   expr, "-",     expr
 	|   expr, "*",     expr
 	|   expr, "/",     expr
+	|   expr, "%",     expr
 
 	|   expr, ">",      expr
 	|   expr, "<",      expr
 	|   expr, "==",     expr
+	|   expr, "!=",     expr
 	|   expr, ">=",     expr
 	|   expr, "<=",     expr
 
 	|   expr, "or",     expr
 	|   expr, "and",    expr
+
+
+	|   expr, ".",      expr
 
 	|   expr, "..",     expr
 	|   expr, "..<",    expr
@@ -122,9 +141,9 @@ infix = expr, "+",     expr
 postfix = expr ".-"
 	|     expr ".*"
 	|     expr ".&"
+	|     expr ".!"
 	|     expr "(" [ expr { "," expr } ] ")"
 	|     expr "[" expr "]";
-prefix = "not" expr;
 literals = number | ident | char | string | "(" expr ")";
 
 exprWithBlock = block

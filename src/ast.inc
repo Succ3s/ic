@@ -209,10 +209,8 @@ AST(Expr, expr, AstExpr,
 		AstSwitch*               _switch;
 		AstImpl*                 impl;
 		AstInfix*                infix;
-		// AstPrefix*               prefix;
 		// TODO
 		AstPostfix*              postfix;
-		AstExpr*                 prefixNot;
 		AstLiteral*              literal;
 	} expr;
 })
@@ -255,9 +253,18 @@ GLOBAL(enum {
 	InfixDiv,      // /
 	InfixMod,      // %
 
+
+	InfixAssign,    // =
+	InfixAddAssign, // +=
+	InfixSubAssign, // -=
+	InfixMulAssign, // *=
+	InfixDivAssign, // /=
+	InfixModAssign, // %=
+
 	InfixGt,       // >
 	InfixLt,       // <
 	InfixEq,       // ==
+	InfixNe,       // !=
 	InfixGe,       // >=
 	InfixLe,       // <=
 
@@ -282,6 +289,7 @@ GLOBAL(enum {
 	PostfixNegation = 1, // .-
 	PostfixRef,          // .&
 	PostfixDeref,        // .*
+	PostfixNot,          // .!
 	PostfixCall,         // '(' expr,* ')'
 	PostfixIndex         // '[' expr ']'
 };)
