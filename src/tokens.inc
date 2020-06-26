@@ -53,7 +53,7 @@ Tok(TkDot             ) /* .   */
 Tok(TkDotMinus        ) /* .-  */
 Tok(TkDotStar         ) /* .*  */
 Tok(TkDotAmpersand    ) /* .&  */
-TOk(TkDotBang         ) /* .!  */
+Tok(TkDotBang         ) /* .!  */
 Tok(TkDotDot          ) /* ..  */
 Tok(TkDotDotLArrow    ) /* ..< */
 Tok(TkComma           ) /* ,   */

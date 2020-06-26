@@ -35,7 +35,7 @@ import = "#import", ident, stringLit;
 typeDef = "type" | "alias", ident,
 	( typesWithoutBlock, ";" ) | ( typesWithBlock [";"] );
 
-proc = "proc", ident, "(", [argDef, {",", argDef}] ")", [type], ";" | blockWithDo;
+proc = "proc", ident, "(", [argDef, {",", argDef}] ")", [type], ";" | block;
 argDef = ident ":" type;
 (* argDef = ident, { ",", ident }, ":", type; *)
 
@@ -68,13 +68,10 @@ typesWithBlock = struct
 struct   = "struct", "{", [ argDef, { ",", argDef } ],   "}";
 union    = "union",  "{", [ type, { ",", type } ],       "}";
 enum     = "enum",   "{", [ enumKey, { ",", enumKey } ], "}";
-enumKey  = ident, [ "=" expr ];
+enumKey  = ident, [ "=", expr ];
 
 
-
-
-blockWithDo = ( "do", stmt ) | block;
-block = "{", { stmt }, "}";
+block = "{", { stmt }, [ expr ], "}";
 
 
 
@@ -83,12 +80,13 @@ block = "{", { stmt }, "}";
 stmt = item
 	|  for
 	|  exprStmt
+	|  expr (* short for return stmt *)
 	|  "return", expr, ";"
-	|  "break" ";"
-	|  "continue" ";"
+	|  "break",    ":", ident, [ expr ], ";"
+	|  "continue", ":", ident, [ expr ], ";"
 	;
 
-for      = "for", [ ident, [ ",", ident ], "in" ], expr, blockWithDo;
+for      = "for", [ ident, [ ",", ident ], "in" ], expr, block;
 exprStmt = exprWithBlock | ( exprWithoutBlock, ";" );
 
 
@@ -96,21 +94,19 @@ exprStmt = exprWithBlock | ( exprWithoutBlock, ";" );
 
 (*
 
-10.??? :: number, ident, string, char, group
-9.ltr  :: ., call, index, .-, .*, .&, .!, new, exprWithBlock
-8.ltr  :: as
-7.ltr  :: *, /, %
-6.ltr  :: +, -
-5.ltr  :: ==, !=
-4.ltr  :: >, <, >=, <=
-3.ltr  :: and
-2.ltr  :: or
-1.ltr  :: orelse, .., ..<
-0.rtl  :: =, +=, -=, *=, /=, %=
+11 (???) ::    group
+10 (???) ::    number, ident, string, char, literal
+9  (ltr) ::    ., call, index, .-, .*, .&, .!, exprWithBlock, cast
+7  (ltr) ::    *, /, %
+6  (ltr) ::    +, -
+5  (ltr) ::    ==, !=
+4  (ltr) ::    >, <, >=, <=
+3  (ltr) ::    and
+2  (ltr) ::    or
+1  (ltr) ::    orelse, .., ..<
+0  (rtl) ::    =, +=, -=, *=, /=, %=
 
 *)
-
-
 
 expr = exprWithoutBlock | exprWithBlock;
 
@@ -132,30 +128,36 @@ infix = expr, "+",     expr
 	|   expr, "and",    expr
 
 
-	|   expr, ".",      expr
+	|   expr, ".", ident
 
 	|   expr, "..",     expr
 	|   expr, "..<",    expr
 	|   expr, "orelse", expr
 	|   expr, "as",     type;
-postfix = expr ".-"
-	|     expr ".*"
-	|     expr ".&"
-	|     expr ".!"
-	|     expr "(" [ expr { "," expr } ] ")"
-	|     expr "[" expr "]";
-literals = number | ident | char | string | "(" expr ")";
+postfix = ( expr, ".-"                              )
+	|     ( expr, ".*"                              )
+	|     ( expr, ".&"                              )
+	|     ( expr, ".!"                              )
+	|     ( expr, ".", "(", type, ")"               )
+	|     ( expr, "(", [ expr, { ",", expr } ], ")" )
+	|     ( expr, "[", expr, "]"                    );
+literals = number | char | string | "(" expr ")" | ident
+	|      ( [ ident, ':' ],  exprWithBlock );
+(* no lookahead - ident, [ ":", exprWithBlock ] *)
+
+
 
 exprWithBlock = block
 	|           if
 	|           switch
 	|           procExpr;
-if = "if" expr, blockWithDo,
-	{ "else", [ "if", expr ], blockWithDo };
+if = "if" expr, block,
+	{ "else", "if", expr, block },
+	[ "else", block ];
 switch = "switch", expr, "{", {switchBranch} "}";
-switchBranch = switchCase, blockWithDo;
+switchBranch = switchCase, block;
 switchCase = "else"
 	|        ident ":" type switchIf,
 	|        expr, [switchIf], { ",", expr, [switchIf] };
 switchIf = "if", expr;
-procExpr = "proc", "(", [argDef, {",", argDef}], ")", [type], blockWithDo;
+procExpr = "proc", "(", [argDef, {",", argDef}], ")", [type], block;

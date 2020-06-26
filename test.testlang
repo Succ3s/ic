@@ -2,13 +2,25 @@
 
 #import fmt "std:fmt"
 
+
+proc fib_a(const x: i32) { fib(x-1 + x-2) }
+proc fib_b(const x: i32) where x <= 1 { 1 }
+proc fib{fib_a, fib_b}
+/*
+fib(3)
+proc fib3() { fib2() + fib1() }
+proc fib2() { fib1() + fib0() }
+proc fib1() { 1 }
+proc fib0() { 1 }
+
+*/
+
 proc test_null_safety() {
 	// null safety
 	// - ptrs, anyptr       // they are pointers
 	// - cstring            // cstring is a strong alias to *u8
 	// - proc               // proc pointer
 	// - slice, string, any // null if the inner pointer is null
-	// - array              // it's a pointer
 	// - enum, union        // except @NoNull
 	alias Foo struct {
 		x: struct {
@@ -17,50 +29,40 @@ proc test_null_safety() {
 		b: bool,
 	}
 	var v = 1;
-	var _1: Foo;                       // error
-	var _2 = new Foo { b = true     }; // error
-	var _3 = new Foo { x.y.z = null }; // error
-	var _4 = new Foo { x.y.z = v.&  }; // ok
+	var _1: Foo;                   // error
+	var _2 = Foo { b = true     }; // error
+	var _3 = Foo { x.y.z = null }; // error
+	var _4 = Foo { x.y.z = v.&  }; // ok
 }
 
 proc test(x: X) bool {
 	var a := 42;
-	a as uint; // cast
-
 
 
 
 	var d: union{int, bool} = true;
 	var res = switch d {
-		x: int if x == 1 do true,
-		x: bool          do x,
-		else             do false,
+		x: int if x == 1 { true  }
+		x: bool          { x     }
+		else             { false }
 	};
 
-	var d: union{int} = 0;
-	var res = switch d {
-		x: int do fmt.println("int %v", x);
-		else   do fmt.println("null");
+	switch 1 {
+		2, 3  { println("foo") }
+		1..10 { println("aaa") }
 	}
 
-	var x = 1;
-	switch x {
-		2, 3  do println("foo"),
-		1..10 do println("aaa"),
-	}
-
-	if  x as bool do println("aaa");
-	for i in 0..1 do println("%v", i);
-	if  true do println("aaa"); else do println("bbb");
+	if  x.(bool) != null             { println("aaa");   }
+	for i in 0..1                    { println("%v", i); }
+	if  true { println("aaa") } else { println("bbb");   }
 }
 
 #import t "core:type"
-
 proc print_struct(s: any) {
 	switch s.info {
 		x: t.Named  {
 			fmt.print("struct %s { ", x.name);
-			x := x.inner as t.Struct; // union cast returns union{T}
+			var x = x.inner.(t.Struct); // union cast returns union{T}
 			assert(x != null); // union{T} can be compared to null
 			// x is T here
 			print_fields(x);
@@ -99,23 +101,19 @@ type Arith(T: type) struct {
 
 
 
-const i32Arith = new Arith(i32) {
-	add: proc(a, b: i32) i32 { return a + b; },
-	sub: proc(a, b: i32) i32 { return a - b; },
-	mul: proc(a, b: i32) i32 { return a * b; },
-	div: proc(a, b: i32) i32 { return a / b; },
+const i32Arith = Arith(i32) {
+	add: proc(a, b: i32) i32 { a + b }
+	sub: proc(a, b: i32) i32 { a - b }
+	mul: proc(a, b: i32) i32 { a * b }
+	div: proc(a, b: i32) i32 { a / b }
 };
 
 proc stuff(
 	const arith: Arith(const T: type)),
 	a, b: T
-) T {
-	return arith.add(a, arith.mul(b, b));
-}
+) T { arith.add(a, arith.mul(b, b)) }
 
-proc test_trait_ish() {
-	fmt.println("%s", stuff(i32Arith, 2.-, 7));
-}
+proc test_trait_ish() { fmt.println("%s", stuff(i32Arith, 2.-, 7)) }
 
 //
 //

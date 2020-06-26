@@ -228,6 +228,26 @@ char lexNextChar(Lexer* lex) {
 	return ch;
 }
 
+
+// char lexNextChar(Lexer* lex) {
+// 	if(lex->str.len <= 0) { return '\0'; }
+// 	char ch = *(lex->str.ptr);
+// 	lex->str.ptr += 1;
+// 	lex->str.len -= 1;
+// 	lex->line += ch == '\n';
+// 	return ch;
+// }
+
+// char lexNextChar(Lexer* lex) {
+// 	char ch = *(lex->str);
+// 	if(ch == '\0') return ch;
+// 	lex->str += 1;
+// 	lex->line += ch == '\n';
+// 	return ch;
+// }
+
+
+
 char lexPreviousChar(Lexer* lex) {
 	return *(lex->str.ptr - 1);
 }

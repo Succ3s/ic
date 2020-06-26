@@ -87,12 +87,10 @@ GLOBAL(enum {
 	TypeKindUnion,
 	TypeKindEnum,
 	TypeKindProcType,
-	TypeKindTrait,
 	TypeKindNamed,
 	TypeKindPointer,
 	TypeKindSlice,
 	TypeKindArray,
-	TypeKindImplList,
 };)
 GLOBAL(typedef struct { AstExpr* inner; AstType* type; } TypeArray;)
 AST(Type, type, AstType,
@@ -101,7 +99,6 @@ AST(Type, type, AstType,
 		AstStruct*                 _struct;
 		AstUnion*                  _union;
 		AstEnum*                   _enum;
-		AstTrait*                  trait;
 		AstProcType*               procT;
 		cstring                    named;
 		AstType*                   ptr;
@@ -135,12 +132,6 @@ AST(Enum, _enum, AstEnum,
 AST(ProcType, procType, AstProcType,
 	ChunkedList(ProcArguments, 4) arguments;
 	AstType*                       _return;
-})
-
-
-GLOBAL(ChunkedListImpl(AstProcType, 8))
-AST(Trait, trait, AstTrait,
-	ChunkedList(AstProc, 8) procs;
 })
 
 
