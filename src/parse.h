@@ -21,7 +21,7 @@ typedef struct {
 
 AstFile* parse(Parser* p);
 
-bool parserPushErr(Parser* p, Error err) {
+bool parser_push_err(Parser* p, Error err) {
 	if(p->flags & PARSE_NOERRORS)  { return true; }
 	if(err.lvl == ErrorLevelError) { p->flags |= PARSE_FAILED; }
 	if(err.file.ptr == null)       { err.file = p->file; }

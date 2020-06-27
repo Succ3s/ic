@@ -22,7 +22,7 @@ enum {
 #undef AST
 
 typedef struct {
-	u8 astKind;
+	u8 ast_kind;
 	union {
 #	define AST(U, l, t, D) t l;
 #		include "ast.inc"
@@ -32,7 +32,7 @@ typedef struct {
 
 
 
-void printSize() {
+void print_size() {
 
 #	define AST(U, l, t, D) printf("sizeof(%s) = %d\n", #t, sizeof(t));
 #		include "ast.inc"

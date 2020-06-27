@@ -24,10 +24,10 @@ GLOBAL(enum {
 	ItemKindDecl
 };)
 AST(Item, item, AstItem,
-	u8 itemKind;
+	u8 item_kind;
 	union {
 		AstImport*   import;
-		AstTypeDecl* typeDecl;
+		AstTypeDecl* type_decl;
 		AstProc*     proc;
 		AstImpl*     Impl;
 		AstDecl*     decl;
@@ -40,9 +40,9 @@ AST(Import, import, AstImport,
 	cstring path;
 })
 
-AST(TypeDecl, typeDecl, AstTypeDecl,
-	bool     isAlias;
-	cstring   newName;
+AST(type_decl, type_decl, AstTypeDecl,
+	bool     is_alias;
+	cstring   new_name;
 	AstType* type;
 })
 
@@ -52,7 +52,7 @@ GLOBAL(typedef struct {
 } ProcArguments;)
 GLOBAL(ChunkedListImpl(ProcArguments, 4))
 AST(Proc, proc, AstProc,
-	cstring                         name;
+	cstring                        name;
 	ChunkedList(ProcArguments, 4)  arguments;
 	AstType*                       _return;
 	AstBlock*                      block; // opt
@@ -69,8 +69,8 @@ AST(Impl, impl, AstImpl,
 })
 
 AST(Decl, decl, AstDecl,
-	bool     isConst;
-	cstring   name;
+	bool     is_const;
+	cstring  name;
 	AstType* type;
 	AstExpr* expr;
 })
@@ -94,12 +94,12 @@ GLOBAL(enum {
 };)
 GLOBAL(typedef struct { AstExpr* inner; AstType* type; } TypeArray;)
 AST(Type, type, AstType,
-	u8 typeKind;
+	u8 type_kind;
 	union {
 		AstStruct*                 _struct;
 		AstUnion*                  _union;
 		AstEnum*                   _enum;
-		AstProcType*               procT;
+		AstProcType*               proc_type;
 		cstring                    named;
 		AstType*                   ptr;
 		AstType*                   slice;
@@ -131,7 +131,7 @@ AST(Enum, _enum, AstEnum,
 
 AST(ProcType, procType, AstProcType,
 	ChunkedList(ProcArguments, 4) arguments;
-	AstType*                       _return;
+	AstType*                      _return;
 })
 
 
@@ -155,12 +155,12 @@ AST(Stmt, stmt, AstStmt,
 	u8 stmtKind;
 	union {
 		AstItem   item;
-		// 'for' expr? BLOCK
-		// 'for' ident,* 'in' expr BLOCK
+		// 'for'  expr? BLOCK
+		// 'for'  ident,* 'in' expr BLOCK
 		AstFor*   _for;
 		AstExpr*  expr; // exprWithBlock | exprWithoutBlock ';'
 		AstExpr*  _return;
-		bool breakOrContinue; // 1 = break, 0 = continue
+		bool      break_or_continue; // 1 = break, 0 = continue
 	} stmt;
 })
 
@@ -309,8 +309,8 @@ AST(Literal, literal, AstLiteral,
 		u64      uint;
 		i64      _int;
 		f64      _float;
-		cstring   ident;
-		cstring   str;
+		cstring  ident;
+		cstring  str;
 		char     ch;
 		AstExpr* group;
 	} lit;

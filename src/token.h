@@ -26,7 +26,7 @@ TkINVALID = -1,
 
 
 
-TokenKey getKeywordOrIdent(string s) {
+TokenKey get_keyword_or_ident(string s) {
 
 #	define Tok(x) 
 #	define TokKw(x, ss) if(strncmp(s.ptr, #ss, sizeof(#ss) - 1) == 0) { return x; } else
@@ -38,7 +38,7 @@ TokenKey getKeywordOrIdent(string s) {
 }
 
 
-cstring tokenToCString(TokenKey k) {
+cstring token_to_cstring(TokenKey k) {
 
 	switch(k) {
 #	define Tok(x)       case x: return #x;

@@ -35,7 +35,7 @@ typedef char*                            cstring;
 typedef struct { char* ptr; usize len; } string;
 
 #include <string.h>
-string newString(cstring s) {
+string string_from_cstring(cstring s) {
 	return (string) {
 		.ptr = s,
 		.len = strlen(s),
@@ -116,7 +116,7 @@ void allocator_cleanup(Allocator* a) {
 	);
 }
 
-cstring stringToCString(Allocator* al, string t) {
+cstring string_to_cstring(Allocator* al, string t) {
 	cstring p = allocator_alloc(al, t.len + 1);
 	if(p == null) return null;
 	strncpy(p, t.ptr, t.len);
@@ -125,7 +125,7 @@ cstring stringToCString(Allocator* al, string t) {
 }
 
 #include <stdlib.h>
-void* stdAllocatorProc(void* _, u8 kind, void* ptr, usize size) {
+void* _std_allocator_proc(void* _, u8 kind, void* ptr, usize size) {
 	switch(kind) {
 		case AllocatorDealloc:
 			free(ptr);
@@ -135,47 +135,47 @@ void* stdAllocatorProc(void* _, u8 kind, void* ptr, usize size) {
 	}
 }
 
-Allocator stdAllocator() {
+Allocator std_allocator() {
 	return (Allocator) {
 		.data = null,
-		.proc = &stdAllocatorProc,
+		.proc = &_std_allocator_proc,
 	};
 }
 
 
-struct BumpArena {
-	struct BumpArena* last;
+struct _BumpArena {
+	struct _BumpArena* last;
 	u8* begin;
 	u8* cursor;
 	u8* end;
 };
 
 struct GrowingBumpAllocator {
-	Allocator* hostAllocator;
-	usize arenaSize;
-	struct BumpArena* tail;
+	Allocator* host_allocator;
+	usize arena_size;
+	struct _BumpArena* tail;
 };
 
-struct BumpArena* GrowingBumpAllocator_newArena(struct GrowingBumpAllocator* b) {
-	usize allocSize = sizeof(struct BumpArena) + b->arenaSize;
-	struct BumpArena* arena = allocator_alloc(b->hostAllocator, allocSize);
+struct _BumpArena* _GrowingBumpAllocator_new_arena(struct GrowingBumpAllocator* b) {
+	usize alloc_size = sizeof(struct _BumpArena) + b->arena_size;
+	struct _BumpArena* arena = allocator_alloc(b->host_allocator, alloc_size);
 	if(arena == null) return null;
-	arena->begin = (u8*)arena + sizeof(struct BumpArena);
-	arena->end = (u8*)arena + allocSize;
+	arena->begin = (u8*)arena + sizeof(struct _BumpArena);
+	arena->end = (u8*)arena + alloc_size;
 	arena->cursor = arena->begin;
 	arena->last = b->tail;
 	b->tail = arena;
 	return arena;
 }
 
-void* growingBumpAllocatorProc(void* __data, u8 kind, void* ptr, usize size) {
+void* _growing_bump_allocator_proc(void* __data, u8 kind, void* ptr, usize size) {
 	struct GrowingBumpAllocator* data = __data;
 	switch(kind) {
 		case AllocatorAlloc: {
-			struct BumpArena* arena = data->tail;
+			struct _BumpArena* arena = data->tail;
 			u8* newPos = (u8*)alignup(arena->cursor + size, sizeof(usize));
 			if(newPos > arena->end || arena == null) {
-				arena = GrowingBumpAllocator_newArena(data);
+				arena = _GrowingBumpAllocator_new_arena(data);
 				newPos = arena->cursor + size;
 				if(arena == null) { return null; }
 			}
@@ -188,30 +188,30 @@ void* growingBumpAllocatorProc(void* __data, u8 kind, void* ptr, usize size) {
 		}
 		case AllocatorDealloc: return null;
 		case AllocatorRealloc:
-			return growingBumpAllocatorProc(
+			return _growing_bump_allocator_proc(
 				data,
 				AllocatorAlloc,
 				null,
 				size
 			);
 		case AllocatorCleanup:
-			for(struct BumpArena* a = data->tail;a != null;) {
-				struct BumpArena* next = a->last;
-				allocator_dealloc(data->hostAllocator, a);
+			for(struct _BumpArena* a = data->tail;a != null;) {
+				struct _BumpArena* next = a->last;
+				allocator_dealloc(data->host_allocator, a);
 				a = next;
 			}
 	}
 }
 
-Allocator growingBumpAllocator(struct GrowingBumpAllocator* target, Allocator* hostAllocator, usize arenaSize) {
+Allocator growing_bump_allocator(struct GrowingBumpAllocator* target, Allocator* host_allocator, usize arena_size) {
 	*target = (struct GrowingBumpAllocator) {
-		.hostAllocator = hostAllocator,
-		.arenaSize = arenaSize,
+		.host_allocator = host_allocator,
+		.arena_size = arena_size,
 	};
-	GrowingBumpAllocator_newArena(target);
+	_GrowingBumpAllocator_new_arena(target);
 	return (Allocator) {
 		.data = target,
-		.proc = growingBumpAllocatorProc,
+		.proc = _growing_bump_allocator_proc,
 	};
 }
 
@@ -220,49 +220,49 @@ Allocator growingBumpAllocator(struct GrowingBumpAllocator* target, Allocator* h
 
 #define ChunkedList(T, S)            ChunkedList_ ## T ## _ ## S
 #define ChunkedListNode(T, S)        ChunkedListNode_ ## T ## _ ## S
-#define ChunkedList_createNode(T, S) ChunkedList_ ## T ## _ ## S ## _createNode
+#define _ChunkedList_create_node(T, S) ChunkedList_ ## T ## _ ## S ## _create_node
 #define ChunkedList_append(T, S)     ChunkedList_ ## T ## _ ## S ## _append
 #define ChunkedList_push(T, S)       ChunkedList_ ## T ## _ ## S ## _push
 #define ChunkedListImpl(T, S)                                                 \
 typedef struct ChunkedListNode(T, S) ChunkedListNode(T, S);                   \
 typedef struct ChunkedList(T, S) ChunkedList(T, S);                           \
 struct ChunkedList(T, S) {                                                    \
-	ChunkedListNode(T, S)* head;                                              \
-	ChunkedListNode(T, S)* tail;                                              \
+    ChunkedListNode(T, S)* head;                                              \
+    ChunkedListNode(T, S)* tail;                                              \
 };                                                                            \
 struct ChunkedListNode(T, S) {                                                \
-	ChunkedListNode(T, S)* next;                                              \
-	usize count;                                                              \
-	T data[S];                                                                \
+    ChunkedListNode(T, S)* next;                                              \
+    usize count;                                                              \
+    T data[S];                                                                \
 };                                                                            \
-bool ChunkedList_createNode(T, S)(ChunkedList(T, S)* list, Allocator* al) {   \
-	ChunkedListNode(T, S)* _new = allocator_alloc(                            \
-		al,                                                                   \
-		sizeof(ChunkedListNode(T, S)));                                       \
-	if(_new == null) { return false; }                                        \
-	*_new = (ChunkedListNode(T, S)){0};                                       \
-	if(list->tail != null) {                                                  \
-		list->tail->next = _new;                                              \
-	}                                                                         \
-	list->tail = _new;                                                        \
-	return true;                                                              \
+bool _ChunkedList_create_node(T, S)(ChunkedList(T, S)* list, Allocator* al) { \
+    ChunkedListNode(T, S)* _new = allocator_alloc(                            \
+        al,                                                                   \
+        sizeof(ChunkedListNode(T, S)));                                       \
+    if(_new == null) { return false; }                                        \
+    *_new = (ChunkedListNode(T, S)){0};                                       \
+    if(list->tail != null) {                                                  \
+        list->tail->next = _new;                                              \
+    }                                                                         \
+    list->tail = _new;                                                        \
+    return true;                                                              \
 }                                                                             \
 bool ChunkedList_append(T, S)(ChunkedList(T, S)* list, T val) {               \
-	ChunkedListNode(T, S)* t = list->tail;                                    \
-	if(t->count >= S) { return false; }                                       \
-	t->data[t->count] = val;                                                  \
-	t->count += 1;                                                            \
-	return true;                                                              \
+    ChunkedListNode(T, S)* t = list->tail;                                    \
+    if(t->count >= S) { return false; }                                       \
+    t->data[t->count] = val;                                                  \
+    t->count += 1;                                                            \
+    return true;                                                              \
 }                                                                             \
 bool ChunkedList_push(T, S)(ChunkedList(T, S)* list, Allocator* al, T val) {  \
-	if(list->tail == null) {                                                  \
-		*list = (ChunkedList(T, S)) {0};                                      \
-		ChunkedList_createNode(T, S)(list, al);                               \
-		list->head = list->tail;                                              \
-	}                                                                         \
-	if(ChunkedList_append(T, S)(list, val)) { return true; }                  \
-	if(!ChunkedList_createNode(T, S)(list, al)) { return false; }             \
-	return ChunkedList_append(T, S)(list, val);                               \
+    if(list->tail == null) {                                                  \
+        *list = (ChunkedList(T, S)) {0};                                      \
+        _ChunkedList_create_node(T, S)(list, al);                             \
+        list->head = list->tail;                                              \
+    }                                                                         \
+    if(ChunkedList_append(T, S)(list, val)) { return true; }                  \
+    if(!_ChunkedList_create_node(T, S)(list, al)) { return false; }           \
+    return ChunkedList_append(T, S)(list, val);                               \
 }
 
 #endif

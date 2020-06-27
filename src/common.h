@@ -13,25 +13,25 @@ typedef struct {
 
 #include <stdio.h>
 
-#define bg_black   "\033[40m"
-#define bg_red     "\033[41m"
-#define bg_green   "\033[42m"
-#define bg_yellow  "\033[43m"
-#define bg_blue    "\033[44m"
-#define bg_magenta "\033[45m"
-#define bg_cyan    "\033[46m"
-#define bg_white   "\033[47m"
+#define BG_BLACK   "\033[40m"
+#define BG_RED     "\033[41m"
+#define BG_GREEN   "\033[42m"
+#define BG_YELLOW  "\033[43m"
+#define BG_BLUE    "\033[44m"
+#define BG_MAGENTA "\033[45m"
+#define BG_CYAN    "\033[46m"
+#define BG_WHITE   "\033[47m"
 
-#define fg_black   "\033[30m"
-#define fg_red     "\033[31m"
-#define fg_green   "\033[32m"
-#define fg_yellow  "\033[33m"
-#define fg_blue    "\033[34m"
-#define fg_magenta "\033[35m"
-#define fg_cyan    "\033[36m"
-#define fg_white   "\033[37m"
+#define FG_BLACK   "\033[30m"
+#define FG_RED     "\033[31m"
+#define FG_GREEN   "\033[32m"
+#define FG_YELLOW  "\033[33m"
+#define FG_BLUE    "\033[34m"
+#define FG_MAGENTA "\033[35m"
+#define FG_CYAN    "\033[36m"
+#define FG_WHITE   "\033[37m"
 
-#define color_reset "\033[0m"
+#define COLOR_RESET "\033[0m"
 
 typedef u8 ErrorLevel;
 enum {
@@ -48,18 +48,18 @@ typedef struct {
 	string     file;
 } Error;
 
-char* ErrorLevel_CString[3] = { bg_red "ERROR", bg_yellow "WARN ", bg_blue "NOTE " };
-void printError(Error err) {
+char* ErrorLevel_cstring[3] = { BG_RED "ERROR", BG_YELLOW "WARN ", BG_BLUE "NOTE " };
+void print_error(Error err) {
 	char buf[10000];
 	char* p = buf;
 
 	if(err.hideInfo) {
-		p = p + sprintf(p, fg_black "%s" color_reset,
-			ErrorLevel_CString[err.lvl]
+		p = p + sprintf(p, FG_BLACK "%s" COLOR_RESET,
+			ErrorLevel_cstring[err.lvl]
 		);
 	} else {
-		p = p + sprintf(p, fg_black "%s" color_reset "[%ju:%ju][%ju:%ju]",
-			ErrorLevel_CString[err.lvl],
+		p = p + sprintf(p, FG_BLACK "%s" COLOR_RESET "[%ju:%ju][%ju:%ju]",
+			ErrorLevel_cstring[err.lvl],
 			err.loc.begin.line,
 			err.loc.begin.column,
 			err.loc.end.line,

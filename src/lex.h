@@ -10,11 +10,9 @@ typedef struct {
 	Token curr;
 } Lexer;
 
-Lexer lexBuild(cstring s);
-// Token lexBuildToken(Lexer* lex, usize TokenKind, usize begin, usize end);
-
-Token lexNext(Lexer* lex);
-char lexNextChar(Lexer* lex);
-char lexPeekChar(Lexer* lex, usize offset);
+Lexer lex_build(cstring s);
+Token lex_next(Lexer* lex);
+char  lex_next_char(Lexer* lex);
+char  lex_peek_char(Lexer* lex, usize offset);
 
 #endif

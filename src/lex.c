@@ -3,16 +3,16 @@
 #include <ctype.h>
 
 
-Lexer lexBuild(cstring s) {
+Lexer lex_build(cstring s) {
 	Lexer l = {
 		.line = 1, .column = 0,
 		.str = s
 	};
-	lexNext(&l);
+	lex_next(&l);
 	return l;
 }
 
-Token lexBuildToken(Lexer* newLex, Lexer* oldLex, usize TokenKind) {
+Token _lex_build_token(Lexer* newLex, Lexer* oldLex, usize TokenKind) {
 	string s = (string) {
 		.ptr = oldLex->str,
 		.len = (usize)newLex->str -(usize)oldLex->str
@@ -27,194 +27,194 @@ Token lexBuildToken(Lexer* newLex, Lexer* oldLex, usize TokenKind) {
 	};
 }
 
-#define maybeDouble(fst, fstTok, scd, scdTok)       \
-case fst:                                           \
-	if(lexPeekChar(lex, 0) == scd) {                \
-		lexNextChar(lex);                           \
-		return lexBuildToken(lex, &oldLex, scdTok); \
-	}                                               \
-	return lexBuildToken(lex, &oldLex, fstTok);
+#define _maybe_double(fst, fstTok, scd, scdTok)        \
+case fst:                                             \
+    if(lex_peek_char(lex, 0) == scd) {                \
+        lex_next_char(lex);                           \
+        return _lex_build_token(lex, &oldLex, scdTok); \
+    }                                                 \
+    return _lex_build_token(lex, &oldLex, fstTok);
 
-#define buildToken(tok) lexBuildToken(lex, &oldLex, tok)
-#define checkNullTerminate(ch, expr) if((ch) == '\0') { expr; }
+#define _build_token(tok)               _lex_build_token(lex, &oldLex, tok)
+#define _check_null_terminate(ch, expr) if((ch) == '\0') { expr; }
 
-bool lexString(Lexer* lex);
-Token lexIdent(Lexer* lex, Lexer oldLex);
-bool lexNumber(Lexer* lex, char ch1);
-Token lex_next_w(Lexer* lex);
+bool  _lex_string(Lexer* lex);
+Token _lex_ident(Lexer* lex, Lexer oldLex);
+bool  _lex_number(Lexer* lex, char ch1);
+Token _lex_next_w(Lexer* lex);
 
-Token lexNext(Lexer* lex) {
-	return lex->curr = lex_next_w(lex);
+Token lex_next(Lexer* lex) {
+	return lex->curr = _lex_next_w(lex);
 }
 
-Token lex_next_w(Lexer* lex) {
+Token _lex_next_w(Lexer* lex) {
 	Lexer oldLex = *lex;
 	char ch;
-	switch(ch = lexNextChar(lex)) {
+	switch(ch = lex_next_char(lex)) {
 		case ' ' : /* FALLTROUGH */
 		case '\n':
 		// TODO(pgs): handle tabs properly(change line/column values right)
 		case '\t':
-		case '\r': return lexNext(lex);
+		case '\r': return lex_next(lex);
 
-		case ';': return buildToken(TkSemiColon);
-		case ':': return buildToken(TkColon);
-		// case '.': return buildToken(TkDot);
+		case ';': return _build_token(TkSemiColon);
+		case ':': return _build_token(TkColon);
+		// case '.': return _build_token(TkDot);
 		case '.':
-			switch(lexPeekChar(lex, 0)) {
-				case '-': lexNextChar(lex); return buildToken(TkDotMinus);
-				case '*': lexNextChar(lex); return buildToken(TkDotStar);
-				case '&': lexNextChar(lex); return buildToken(TkDotAmpersand);
-				case '!': lexNextChar(lex); return buildToken(TkDotBang);
+			switch(lex_peek_char(lex, 0)) {
+				case '-': lex_next_char(lex); return _build_token(TkDotMinus);
+				case '*': lex_next_char(lex); return _build_token(TkDotStar);
+				case '&': lex_next_char(lex); return _build_token(TkDotAmpersand);
+				case '!': lex_next_char(lex); return _build_token(TkDotBang);
 				case '.':
-					lexNextChar(lex);
-					if(lexPeekChar(lex, 0) == '<') {
-						lexNextChar(lex);
-						return buildToken(TkDotDotLArrow);
+					lex_next_char(lex);
+					if(lex_peek_char(lex, 0) == '<') {
+						lex_next_char(lex);
+						return _build_token(TkDotDotLArrow);
 					}
-					return buildToken(TkDotDot);
+					return _build_token(TkDotDot);
 						
 			}
-			// if(lexPeekChar(lex, 0) == '.') {
-			// 	lexNextChar(lex);
-			// 	if(lexPeekChar(lex, 0) == '<') {
-			// 		lexNextChar(lex);
-			// 		return buildToken(TkDotDotLArrow);
+			// if(lex_peek_char(lex, 0) == '.') {
+			// 	lex_next_char(lex);
+			// 	if(lex_peek_char(lex, 0) == '<') {
+			// 		lex_next_char(lex);
+			// 		return _build_token(TkDotDotLArrow);
 			// 	}
-			// 	return buildToken(TkDotDot);
+			// 	return _build_token(TkDotDot);
 			// }
-			return buildToken(TkDot);
-		case ',': return buildToken(TkComma);
+			return _build_token(TkDot);
+		case ',': return _build_token(TkComma);
 
-		case '(': return buildToken(TkOpenParen);
-		case '[': return buildToken(TkOpenBracket);
-		case '{': return buildToken(TkOpenBrace);
+		case '(': return _build_token(TkOpenParen);
+		case '[': return _build_token(TkOpenBracket);
+		case '{': return _build_token(TkOpenBrace);
 
-		case ')': return buildToken(TkCloseParen);
-		case ']': return buildToken(TkCloseBracket);
-		case '}': return buildToken(TkCloseBrace);
+		case ')': return _build_token(TkCloseParen);
+		case ']': return _build_token(TkCloseBracket);
+		case '}': return _build_token(TkCloseBrace);
 
-		maybeDouble('+', TkPlus,    '=', TkPlusEq);
-		maybeDouble('-', TkMinus,   '=', TkMinusEq);
-		maybeDouble('*', TkStar,    '=', TkStarEq);
-		maybeDouble('/', TkSlash,   '=', TkSlashEq);
-		maybeDouble('%', TkPercent, '=', TkPercentEq);
+		_maybe_double('+', TkPlus,    '=', TkPlusEq);
+		_maybe_double('-', TkMinus,   '=', TkMinusEq);
+		_maybe_double('*', TkStar,    '=', TkStarEq);
+		_maybe_double('/', TkSlash,   '=', TkSlashEq);
+		_maybe_double('%', TkPercent, '=', TkPercentEq);
 
-		maybeDouble('=', TkEq,      '=', TkEqEq);
-		maybeDouble('!', TkINVALID, '=', TkBangEq);
-		maybeDouble('<', TkLArrow,  '=', TkLArrowEq);
-		maybeDouble('>', TkRArrow,  '=', TkRArrowEq);
+		_maybe_double('=', TkEq,      '=', TkEqEq);
+		_maybe_double('!', TkINVALID, '=', TkBangEq);
+		_maybe_double('<', TkLArrow,  '=', TkLArrowEq);
+		_maybe_double('>', TkRArrow,  '=', TkRArrowEq);
 
 		// string
 		case '"': {
-			if(lexString(lex)) {
-				return buildToken(TkLitString);
+			if(_lex_string(lex)) {
+				return _build_token(TkLitString);
 			}
-			return buildToken(TkINVALID);
+			return _build_token(TkINVALID);
 		}
 		// char
 		case '\'': {
-			ch = lexNextChar(lex);
-			checkNullTerminate(ch, return buildToken(TkINVALID));
+			ch = lex_next_char(lex);
+			_check_null_terminate(ch, return _build_token(TkINVALID));
 			if(ch == '\\') {
-				ch = lexNextChar(lex);
-				checkNullTerminate(ch, return buildToken(TkINVALID));
+				ch = lex_next_char(lex);
+				_check_null_terminate(ch, return _build_token(TkINVALID));
 			}
-			if(lexNextChar(lex) != '\'') return buildToken(TkINVALID);
-			return buildToken(TkLitChar);
+			if(lex_next_char(lex) != '\'') return _build_token(TkINVALID);
+			return _build_token(TkLitChar);
 		}
 		default: {
 			// number
 			if(isdigit(ch)) {
-				if(!lexNumber(lex, ch)) { *lex = oldLex; lexNextChar(lex); }
+				if(!_lex_number(lex, ch)) { *lex = oldLex; lex_next_char(lex); }
 				// TODO(pgs): scientific notation
-				if(lexPeekChar(lex, 0) == '.' && isdigit(lexPeekChar(lex, 1))) {
-					lexNextChar(lex);
-					ch = lexPeekChar(lex, 0);
+				if(lex_peek_char(lex, 0) == '.' && isdigit(lex_peek_char(lex, 1))) {
+					lex_next_char(lex);
+					ch = lex_peek_char(lex, 0);
 					while(isdigit(ch) || ch == '_') {
-						lexNextChar(lex);
-						ch = lexPeekChar(lex, 0);
+						lex_next_char(lex);
+						ch = lex_peek_char(lex, 0);
 					}
-					return buildToken(TkLitFloat);
+					return _build_token(TkLitFloat);
 				}
-				return buildToken(TkLitInteger);
+				return _build_token(TkLitInteger);
 			}
 			// identifiers and keywords
 			if((isalpha(ch) || ch == '_' || ch == '#')) {
-				return lexIdent(lex, oldLex);
+				return _lex_ident(lex, oldLex);
 			}
-			return buildToken(TkINVALID);
+			return _build_token(TkINVALID);
 		}
 	}
 }
 
-Token lexIdent(Lexer* lex, Lexer oldLex) {
-	char ch = lexPeekChar(lex, 0);
+Token _lex_ident(Lexer* lex, Lexer oldLex) {
+	char ch = lex_peek_char(lex, 0);
 	while(isalnum(ch) || ch == '_') {
-		checkNullTerminate(lexNextChar(lex), return buildToken(TkINVALID));
-		ch = lexPeekChar(lex, 0);
+		_check_null_terminate(lex_next_char(lex), return _build_token(TkINVALID));
+		ch = lex_peek_char(lex, 0);
 	}
-	Token t = buildToken(TkLitIdent);
-	TokenKey key = getKeywordOrIdent(t.str);
+	Token t = _build_token(TkLitIdent);
+	TokenKey key = get_keyword_or_ident(t.str);
 	if(key != TkLitIdent) {
 		t.tok = key;
 	}
 	return t;
 }
 
-bool lexString(Lexer* lex) {
-	for(;lexPeekChar(lex, 0) != '"';) {
-		checkNullTerminate(lexNextChar(lex), return false);
-		if(lexPeekChar(lex, 0) == '\\') {
-			lexNextChar(lex);
-			if(lexPeekChar(lex, 0) == '"') {
-				lexNextChar(lex);
+bool _lex_string(Lexer* lex) {
+	for(;lex_peek_char(lex, 0) != '"';) {
+		_check_null_terminate(lex_next_char(lex), return false);
+		if(lex_peek_char(lex, 0) == '\\') {
+			lex_next_char(lex);
+			if(lex_peek_char(lex, 0) == '"') {
+				lex_next_char(lex);
 			}
 		}
 	}
-	lexNextChar(lex);
+	lex_next_char(lex);
 	return true;
 }
 
-#define lexNumberLit(_case, cond, extCond)                      \
-_case {                                                         \
-	/* TODO(pgs): error */                                      \
-	if(ch1 != '0') return false;                                \
-	ch = lexNextChar(lex);                                      \
-	if(!(cond)) return false;                                   \
-	for(;;) {                                                   \
-		ch = lexPeekChar(lex, 0);                               \
-		if((cond) || (extCond)) { lexNextChar(lex); continue; } \
-		return true;                                            \
-	}                                                           \
+#define _lex_number_lit(_case, cond, extCond)                     \
+_case {                                                           \
+	/* TODO(pgs): error */                                        \
+	if(ch1 != '0') return false;                                  \
+	ch = lex_next_char(lex);                                      \
+	if(!(cond)) return false;                                     \
+	for(;;) {                                                     \
+		ch = lex_peek_char(lex, 0);                               \
+		if((cond) || (extCond)) { lex_next_char(lex); continue; } \
+		return true;                                              \
+	}                                                             \
 }
 
-bool lexNumber(Lexer* lex, char ch1) {
+bool _lex_number(Lexer* lex, char ch1) {
 	char ch;
-	switch(ch = lexNextChar(lex)) {
+	switch(ch = lex_next_char(lex)) {
 		// bin
-		lexNumberLit(case 'b':, ch == '1' || ch == '0', ch == '_')
+		_lex_number_lit(case 'b':, ch == '1' || ch == '0', ch == '_')
 		// oct
-		lexNumberLit(case 'o':, ch >= '0' && ch <= '7', ch == '_')
+		_lex_number_lit(case 'o':, ch >= '0' && ch <= '7', ch == '_')
 		// dec
-		lexNumberLit(case 'd':, isdigit(ch),            ch == '_')
+		_lex_number_lit(case 'd':, isdigit(ch),            ch == '_')
 		// hex
-		lexNumberLit(case 'x':, isxdigit(ch),           ch == '_')
+		_lex_number_lit(case 'x':, isxdigit(ch),           ch == '_')
 		// dec
 		default: {
 			if(!(isdigit(ch) || ch == '_')) return false;
 			for(;;) {
-				ch = lexPeekChar(lex, 0);
-				if(isdigit(ch) || ch == '_') { lexNextChar(lex); continue; } 
+				ch = lex_peek_char(lex, 0);
+				if(isdigit(ch) || ch == '_') { lex_next_char(lex); continue; } 
 				return true;
 			}
 		}
 	}
 	return false;
 }
-#undef lexNumberLit
+#undef _lex_number_lit
 
-char lexNextChar(Lexer* lex) {
+char lex_next_char(Lexer* lex) {
 	char ch = *(lex->str);
 	if(ch == '\0') { return ch; }
 	lex->str += 1;
@@ -229,7 +229,7 @@ char lexNextChar(Lexer* lex) {
 }
 
 
-// char lexNextChar(Lexer* lex) {
+// char lex_next_char(Lexer* lex) {
 // 	if(lex->str.len <= 0) { return '\0'; }
 // 	char ch = *(lex->str.ptr);
 // 	lex->str.ptr += 1;
@@ -238,7 +238,7 @@ char lexNextChar(Lexer* lex) {
 // 	return ch;
 // }
 
-// char lexNextChar(Lexer* lex) {
+// char lex_next_char(Lexer* lex) {
 // 	char ch = *(lex->str);
 // 	if(ch == '\0') return ch;
 // 	lex->str += 1;
@@ -246,10 +246,10 @@ char lexNextChar(Lexer* lex) {
 // 	return ch;
 // }
 
-char lexPeekChar(Lexer* lex, usize offset) {
+char lex_peek_char(Lexer* lex, usize offset) {
 	return *(lex->str + offset);
 }
 
-#undef maybeDouble
-#undef buildToken
-#undef checkNullTerminate
+#undef _maybe_double
+#undef _build_token
+#undef _check_null_terminate
