@@ -2,19 +2,6 @@
 
 #import fmt "std:fmt"
 
-
-proc fib_a(const x: i32) { fib(x-1 + x-2) }
-proc fib_b(const x: i32) where x <= 1 { 1 }
-proc fib{fib_a, fib_b}
-/*
-fib(3)
-proc fib3() { fib2() + fib1() }
-proc fib2() { fib1() + fib0() }
-proc fib1() { 1 }
-proc fib0() { 1 }
-
-*/
-
 proc test_null_safety() {
 	// null safety
 	// - ptrs, anyptr       // they are pointers

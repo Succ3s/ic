@@ -5,8 +5,7 @@ const char* var = msg;                    \
 const usize sizeof_ ## var = sizeof(msg);
 
 errMessage(errUnexpected, "Unexpected token: expected %s, but got %s")
-errMessage(errUnexpected2, "Unexpected tokens: expected %s, or %s, but got %s")
- 
+
 #define makeErrUnexpected(EXPECTED, GOT, ...)             \
 cstring expected = tokenToCString(EXPECTED);              \
 cstring got      = tokenToCString(GOT);                   \
@@ -42,28 +41,31 @@ AstFile* parse(Parser* p) {
 
 AstPackage* parsePackage(Parser* p) {
 	// '#package' ident
-	Token package = lexNext(p->lex);
+	Token package = p->lex->curr;
 	if(package.tok != TkKwHashPackage) {
 		p->flags |= PARSE_NOPACKAGE;
 		return null;
 	}
 	LineColumn begin = package.begin;
 
-	Token pkgName = lexNext(p->lex);
-	LineColumn end = pkgName.end;
 
 	AstPackage* pkg = allocator_alloc(
 		p->allocator,
 		sizeof(AstPackage) + sizeof(Location)
 	);
-	pkg->loc = (Location*)((u8*)pkg + sizeof(AstPackage));
-	*pkg->loc = (Location) { begin, end };
+	pkg->loc = (Location*)(pkg + 1);
 
+
+
+
+	Token pkgName = lexNext(p->lex);
+	*pkg->loc = (Location) { begin, pkgName.end };
 	if(pkgName.tok != TkLitIdent) {
 		makeErrUnexpected(TkLitIdent, pkgName.tok, (Location) { pkgName.begin, pkgName.end });
 		pkg->name = null;
 		return pkg;
 	}
+	lexNext(p->lex);
 
 	cstring cstr = stringToCString(p->allocator, pkgName.str);
 	pkg->name = cstr;
@@ -74,7 +76,7 @@ AstPackage* parsePackage(Parser* p) {
 // TODO(pgs): proc
 // TODO(pgs): decl
 AstItem* parseItem(Parser* p) {
-	Token fst = lexPeek(p->lex);
+	Token fst = p->lex->curr;
 	bool isAlias = false; // line 161
 	switch(fst.tok) {
 		// #import
@@ -96,7 +98,7 @@ AstItem* parseItem(Parser* p) {
 			import->loc       = item->loc;
 			item->loc->begin = fst.begin;
 
-			Token nxt = lexNext(p->lex);
+			Token nxt = p->lex->curr;
 			switch(nxt.tok) {
 				case TkLitIdent:
 					import->namespace = stringToCString(p->allocator, nxt.str);
@@ -132,6 +134,7 @@ AstItem* parseItem(Parser* p) {
 
 				return item;
 			}
+			lexNext(p->lex);
 
 			cstring path1 = stringToCString(p->allocator, path.str);
 			import->path = path1;
@@ -160,13 +163,14 @@ AstItem* parseItem(Parser* p) {
 
 
 			// ident
-			Token name = lexNext(p->lex);
+			Token name = p->lex->curr;
 			if(name.tok != TkLitIdent) {
 				makeErrUnexpected(TkLitIdent, name.tok, (Location) { name.begin, name.end });
 				item->loc->end = name.end;
 				return item;
 			}
 			tDecl->newName = stringToCString(p->allocator, name.str);
+			lexNext(p->lex);
 
 			// type
 			AstType* t = parseTypeWithoutBlock(p);
@@ -179,7 +183,7 @@ AstItem* parseItem(Parser* p) {
 				}
 				goto nosemicolon;
 			}
-			Token semic = lexPeek(p->lex);
+			Token semic = p->lex->curr;
 			if(semic.tok != TkSemiColon) {
 				makeErrUnexpected(TkSemiColon, semic.tok, (Location) { semic.begin, semic.end });
 				item->loc->end = semic.end;
@@ -212,7 +216,8 @@ AstType* parseType(Parser* p) {
 // TODO(pgs): proc type
 // TODO(pgs): nonull type
 AstType* parseTypeWithoutBlock(Parser* p) {
-	Token fst = lexPeek(p->lex);
+	Token fst = p->lex->curr;
+
 	switch(fst.tok) {
 		case TkLitIdent: {
 			lexNext(p->lex);
@@ -249,7 +254,7 @@ AstType* parseTypeWithoutBlock(Parser* p) {
 
 		case TkOpenBracket: {
 			lexNext(p->lex);
-			switch(lexPeek(p->lex).tok) {
+			switch(p->lex->curr.tok) {
 				case TkCloseBracket: {
 					lexNext(p->lex);
 
@@ -275,10 +280,11 @@ AstType* parseTypeWithoutBlock(Parser* p) {
 						// TODO(pgs): handle error
 						return null;
 					}
-					if(lexNext(p->lex).tok != TkCloseBracket) {
+					if(p->lex->curr.tok != TkCloseBracket) {
 						// TODO(pgs): handle error
 						return null;
 					}
+					lexNext(p->lex);
 
 					AstType* typ = parseType(p);
 					if(typ == null) {
@@ -307,7 +313,7 @@ AstType* parseTypeWithoutBlock(Parser* p) {
 
 
 AstType* parseTypeWithBlock(Parser* p) {
-	Token fst = lexPeek(p->lex);
+	Token fst = p->lex->curr;
 	switch(fst.tok) {
 		case TkKwStruct: {
 			lexNext(p->lex);
@@ -327,7 +333,7 @@ AstType* parseTypeWithBlock(Parser* p) {
 
 
 
-			Token tmp = lexPeek(p->lex);
+			Token tmp = p->lex->curr;
 			if(tmp.tok != TkOpenBrace) {
 				makeErrUnexpected(TkOpenBrace, tmp.tok, (Location) { tmp.begin, tmp.end });
 				type->loc->end = tmp.end;
@@ -340,9 +346,9 @@ AstType* parseTypeWithBlock(Parser* p) {
 			strct->fields = parseArguments(p, TkComma);
 
 
-			tmp = lexPeek(p->lex);
+			tmp = p->lex->curr;
 			type->loc->end = tmp.end;
-			if(lexPeek(p->lex).tok != TkCloseBrace) {
+			if(tmp.tok != TkCloseBrace) {
 				makeErrUnexpected(TkCloseBrace, tmp.tok, (Location) { tmp.begin, tmp.end });
 				return type;
 			}
@@ -370,7 +376,7 @@ AstType* parseTypeWithBlock(Parser* p) {
 
 
 
-			Token tmp = lexPeek(p->lex);
+			Token tmp = p->lex->curr;
 			if(tmp.tok != TkOpenBrace) {
 				makeErrUnexpected(TkOpenBrace, tmp.tok, (Location) { tmp.begin, tmp.end });
 				type->loc->end = tmp.end;
@@ -384,14 +390,14 @@ AstType* parseTypeWithBlock(Parser* p) {
 				AstType* t = parseType(p);
 				if(t == null) { break; }
 				ChunkedList_push(AstType, 4)(&types, p->allocator, *t);
-				if(lexPeek(p->lex).tok != TkComma) { break; }
+				if(p->lex->curr.tok != TkComma) { break; }
 				lexNext(p->lex);
 			}
 			unin->types = types;
 
-			tmp = lexPeek(p->lex);
+			tmp = p->lex->curr;
 			type->loc->end = tmp.end;
-			if(lexPeek(p->lex).tok != TkCloseBrace) {
+			if(tmp.tok != TkCloseBrace) {
 				makeErrUnexpected(TkCloseBrace, tmp.tok, (Location) { tmp.begin, tmp.end });
 				return type;
 			}
@@ -415,7 +421,7 @@ AstType* parseTypeWithBlock(Parser* p) {
 
 			type->loc->begin = fst.begin;
 
-			Token tmp = lexPeek(p->lex);
+			Token tmp = p->lex->curr;
 			if(tmp.tok != TkOpenBrace) {
 				makeErrUnexpected(TkOpenBrace, tmp.tok, (Location) { tmp.begin, tmp.end });
 				type->loc->end = tmp.end;
@@ -430,13 +436,13 @@ AstType* parseTypeWithBlock(Parser* p) {
 			ChunkedList(EnumKey, 8) fields = {0};
 			for(;;) {
 				EnumKey key = {0};
-				Token tmp = lexPeek(p->lex);
+				Token tmp = p->lex->curr;
 				if(tmp.tok != TkLitIdent) { break; }
 				key.field = stringToCString(p->allocator, tmp.str);
 				lexNext(p->lex);
 
 
-				tmp = lexPeek(p->lex);
+				tmp = p->lex->curr;
 				if(tmp.tok != TkEq) { goto noexpr; }
 				lexNext(p->lex);
 
@@ -449,7 +455,7 @@ AstType* parseTypeWithBlock(Parser* p) {
 				key.expr = expr;
 
 				noexpr:
-				if(lexPeek(p->lex).tok != TkComma) { break; }
+				if(p->lex->curr.tok != TkComma) { break; }
 				lexNext(p->lex);
 				ChunkedList_push(EnumKey, 8)(&fields, p->allocator, key);
 			}
@@ -458,9 +464,9 @@ AstType* parseTypeWithBlock(Parser* p) {
 
 
 
-			tmp = lexPeek(p->lex);
+			tmp = p->lex->curr;
 			type->loc->end = tmp.end;
-			if(lexPeek(p->lex).tok != TkCloseBrace) {
+			if(tmp.tok != TkCloseBrace) {
 				makeErrUnexpected(TkCloseBrace, tmp.tok, (Location) { tmp.begin, tmp.end });
 				return type;
 			}
@@ -482,13 +488,13 @@ ChunkedList(ProcArguments, 4) parseArguments(Parser* p, TokenKey separator) {
 	for(;;) {
 		ProcArguments arg = {0};
 
-		Token tmp = lexPeek(p->lex);
+		Token tmp = p->lex->curr;
 		if(tmp.tok != TkLitIdent) { break; }
 		arg.name = stringToCString(p->allocator, tmp.str);
 		lexNext(p->lex);
 
 
-		if(lexPeek(p->lex).tok != TkColon) {
+		if(p->lex->curr.tok != TkColon) {
 			// TODO(pgs): handle error
 			printf("expected colon\n");
 			abort();
@@ -505,7 +511,7 @@ ChunkedList(ProcArguments, 4) parseArguments(Parser* p, TokenKey separator) {
 
 		ChunkedList_push(ProcArguments, 4)(&args, p->allocator, arg);
 
-		if(lexPeek(p->lex).tok != separator) { break; }
+		if(p->lex->curr.tok != separator) { break; }
 		lexNext(p->lex);
 	}
 	return args;

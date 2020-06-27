@@ -10,23 +10,23 @@ int main() {
 	Allocator stdl = stdAllocator();
 	struct GrowingBumpAllocator bump;
 	Allocator al = growingBumpAllocator(&bump, &stdl, megabytes(30));
-	Lexer lex = lexBuild(newString(
-	                               "#package hello\n"                          // ok 
-	                               // "#import \"foo\"\n"                      // error
-	                               // "#import bar 10\n"                       // error
-	                               "#import bar \"bar\"\n"                     // ok
-	                               // "alias false\n"                          // error
-	                               // "type foo aaa\n"                         // error
-	                               "type bar aaa;\n"                           // ok
-	                               "type baz *aaa;\n"                          // ok
-	                               "type fo1 []aa;\n"                          // ok
-	                               // "type fo2 [10]aa;\n"                     // error, precisa fazer o parser de expr :peens
-	                               "type fo3 struct {}\n"                      // ok
-	                               "type fo4 struct { x: int }\n"              // ok
-	                               "type fo5 struct { x: *int, y: int }\n"     // ok
-	                               "type fo6 union { int, struct {}, *int }\n" // ok
-	                               "type fo7 enum { hello, hi, hello }\n"      // ok
-	));
+	Lexer lex = lexBuild(
+	                     "#package hello\n"                          // ok 
+	                     // "#import \"foo\"\n"                      // error
+	                     // "#import bar 10\n"                       // error
+	                     "#import bar \"bar\"\n"                     // ok
+	                     // "alias false\n"                          // error
+	                     // "type foo aaa\n"                         // error
+	                     "type bar aaa;\n"                           // ok
+	                     "type baz *aaa;\n"                          // ok
+	                     "type fo1 []aa;\n"                          // ok
+	                     // "type fo2 [10]aa;\n"                     // error, precisa fazer o parser de expr :peens
+	                     "type fo3 struct {}\n"                      // ok
+	                     "type fo4 struct { x: int }\n"              // ok
+	                     "type fo5 struct { x: *int, y: int }\n"     // ok
+	                     "type fo6 union { int, struct {}, *int }\n" // ok
+	                     "type fo7 enum { hello, hi, hello }\n"      // ok
+	);
 	Parser p = (Parser) {
 		.allocator = &al,
 		.file      = newString("./build.c"),

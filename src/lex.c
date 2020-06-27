@@ -3,16 +3,20 @@
 #include <ctype.h>
 
 
-Lexer lexBuild(string s) {
-	return (Lexer) {
+Lexer lexBuild(cstring s) {
+	Lexer l = {
 		.line = 1, .column = 0,
-		.str = s,
+		.str = s
 	};
+	lexNext(&l);
+	return l;
 }
 
 Token lexBuildToken(Lexer* newLex, Lexer* oldLex, usize TokenKind) {
-	string s = oldLex->str;
-	s.len = oldLex->str.len - newLex->str.len;
+	string s = (string) {
+		.ptr = oldLex->str,
+		.len = (usize)newLex->str -(usize)oldLex->str
+	};
 	return (Token) {
 		.tok = TokenKind,
 		.str = s,
@@ -37,8 +41,13 @@ case fst:                                           \
 bool lexString(Lexer* lex);
 Token lexIdent(Lexer* lex, Lexer oldLex);
 bool lexNumber(Lexer* lex, char ch1);
+Token lex_next_w(Lexer* lex);
 
 Token lexNext(Lexer* lex) {
+	return lex->curr = lex_next_w(lex);
+}
+
+Token lex_next_w(Lexer* lex) {
 	Lexer oldLex = *lex;
 	char ch;
 	switch(ch = lexNextChar(lex)) {
@@ -205,20 +214,11 @@ bool lexNumber(Lexer* lex, char ch1) {
 }
 #undef lexNumberLit
 
-
-
-Token lexPeek(Lexer* lex) {
-	Lexer tmp = *lex;
-	Token t = lexNext(lex);
-	*lex = tmp;
-	return t;
-}
-
 char lexNextChar(Lexer* lex) {
-	if(lex->str.len <= 0) { return '\0'; }
-	char ch = *(lex->str.ptr);
-	lex->str.ptr += 1;
-	lex->str.len -= 1;
+	char ch = *(lex->str);
+	if(ch == '\0') { return ch; }
+	lex->str += 1;
+	// lex->line += ch == '\n';
 	if(ch == '\n') {
 		lex->line  += 1;
 		lex->column = 0;
@@ -246,14 +246,8 @@ char lexNextChar(Lexer* lex) {
 // 	return ch;
 // }
 
-
-
-char lexPreviousChar(Lexer* lex) {
-	return *(lex->str.ptr - 1);
-}
-
 char lexPeekChar(Lexer* lex, usize offset) {
-	return *(lex->str.ptr + offset);
+	return *(lex->str + offset);
 }
 
 #undef maybeDouble

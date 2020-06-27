@@ -6,16 +6,15 @@
 
 typedef struct {
 	usize line, column;
-	string str;
+	cstring str;
+	Token curr;
 } Lexer;
 
-Lexer lexBuild(string s);
+Lexer lexBuild(cstring s);
 // Token lexBuildToken(Lexer* lex, usize TokenKind, usize begin, usize end);
 
 Token lexNext(Lexer* lex);
-Token lexPeek(Lexer* lex);
 char lexNextChar(Lexer* lex);
-char lexPreviousChar(Lexer* lex);
 char lexPeekChar(Lexer* lex, usize offset);
 
 #endif
