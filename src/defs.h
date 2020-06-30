@@ -218,11 +218,11 @@ Allocator growing_bump_allocator(struct GrowingBumpAllocator* target, Allocator*
 
 // Chunked List
 
-#define ChunkedList(T, S)            ChunkedList_ ## T ## _ ## S
-#define ChunkedListNode(T, S)        ChunkedListNode_ ## T ## _ ## S
-#define _ChunkedList_create_node(T, S) ChunkedList_ ## T ## _ ## S ## _create_node
-#define ChunkedList_append(T, S)     ChunkedList_ ## T ## _ ## S ## _append
-#define ChunkedList_push(T, S)       ChunkedList_ ## T ## _ ## S ## _push
+#define ChunkedList(T, S)              ChunkedList_ ## T ## _ ## S
+#define ChunkedListNode(T, S)          ChunkedListNode_ ## T ## _ ## S
+#define _ChunkedList_create_node(T, S) _ChunkedList_ ## T ## _ ## S ## _create_node
+#define _ChunkedList_append(T, S)      _ChunkedList_ ## T ## _ ## S ## _append
+#define ChunkedList_push(T, S)         ChunkedList_ ## T ## _ ## S ## _push
 #define ChunkedListImpl(T, S)                                                 \
 typedef struct ChunkedListNode(T, S) ChunkedListNode(T, S);                   \
 typedef struct ChunkedList(T, S) ChunkedList(T, S);                           \
@@ -247,7 +247,7 @@ bool _ChunkedList_create_node(T, S)(ChunkedList(T, S)* list, Allocator* al) { \
     list->tail = _new;                                                        \
     return true;                                                              \
 }                                                                             \
-bool ChunkedList_append(T, S)(ChunkedList(T, S)* list, T val) {               \
+bool _ChunkedList_append(T, S)(ChunkedList(T, S)* list, T val) {              \
     ChunkedListNode(T, S)* t = list->tail;                                    \
     if(t->count >= S) { return false; }                                       \
     t->data[t->count] = val;                                                  \
@@ -260,9 +260,9 @@ bool ChunkedList_push(T, S)(ChunkedList(T, S)* list, Allocator* al, T val) {  \
         _ChunkedList_create_node(T, S)(list, al);                             \
         list->head = list->tail;                                              \
     }                                                                         \
-    if(ChunkedList_append(T, S)(list, val)) { return true; }                  \
+    if(_ChunkedList_append(T, S)(list, val)) { return true; }                 \
     if(!_ChunkedList_create_node(T, S)(list, al)) { return false; }           \
-    return ChunkedList_append(T, S)(list, val);                               \
+    return _ChunkedList_append(T, S)(list, val);                              \
 }
 
 #endif

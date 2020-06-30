@@ -26,48 +26,37 @@ file = package, { item };
 package = "#package", ident;
 
 item = import
-	|  typeDef
 	|  proc
 	|  decl;
 
 import = "#import", ident, stringLit;
 
-typeDef = "type" | "alias", ident,
-	( typesWithoutBlock, ";" ) | ( typesWithBlock [";"] );
-
 proc = "proc", ident, "(", [argDef, {",", argDef}] ")", [type], ";" | block;
 argDef = ident ":" type;
-(* argDef = ident, { ",", ident }, ":", type; *)
 
 decl = "const" | "var", ident, [ ":", type ], [ "=", expr ], ";";
 
 
-
-
 type = typesWithoutBlock | typesWithBlock;
-typesWithoutBlock = namedType
-	|               noNullType
-	|               ptrType
-	|               sliceType
-	|               arrayType
-	|               procType;
-namedType = ident;
-noNullType = "!",   ptrType
-	|               namedType (* cstring, string, any, anyptr *)
-    |               procType
-    |               sliceType
-    |               arrayType;
-ptrType   = "*" type;
-sliceType = "[" "]" type;
-arrayType = "[" expr "]" type;
-procType  = "proc", "(", [argDef, {",", argDef}], ")", [type];
+typesWithoutBlock = ["!"], namedType (* only if flags & EXPR_SUBSET *)
+	|                      procType
+	|                      ptrType
+	|                      sliceType
+	|                      arrayType
+	|                      ptrArrayType;
+namedType    = ident;                                                  (* flags |= TYPE_INIT *)
+procType     = "*", "proc", "(", [argDef, {",", argDef}], ")", [type]; (* flags ^= TYPE_INIT *)
+ptrType      = "*", type;                                              (* flags ^= TYPE_INIT *)
+sliceType    = "[", "]", type;                                         (* flags |= TYPE_INIT *)
+arrayType    = "[", expr, "]", type;                                   (* flags |= TYPE_INIT *)
+ptrArrayType = "[", "*", "]", type;                                    (* flags |= TYPE_INIT *)
 
 typesWithBlock = struct
 	|            union
 	|            enum;
-struct   = "struct", "{", [ argDef, { ",", argDef } ],   "}";
-union    = "union",  "{", [ type, { ",", type } ],       "}";
-enum     = "enum",   "{", [ enumKey, { ",", enumKey } ], "}";
+struct   = "struct", "{", [ argDef, { ",", argDef } ],   "}"; (* flags |= TYPE_INIT *)
+union    = "union",  "{", [ type, { ",", type } ],       "}"; (* flags ^= TYPE_INIT *)
+enum     = "enum",   "{", [ enumKey, { ",", enumKey } ], "}"; (* flags ^= TYPE_INIT *)
 enumKey  = ident, [ "=", expr ];
 
 
@@ -77,14 +66,13 @@ block = "{", { stmt }, [ expr ], "}";
 
 
 
-stmt = item
+stmt = ";"
+	|  item
 	|  for
 	|  exprStmt
-	|  expr (* short for return stmt *)
-	|  "return", expr, ";"
-	|  "break",    ":", ident, [ expr ], ";"
-	|  "continue", ":", ident, [ expr ], ";"
-	;
+	|  ( "break",    ":", ident, [ expr ], ";" )
+	|  ( "continue", ":", ident, [ expr ], ";" )
+	|  ( "defer", exprStmt                     );
 
 for      = "for", [ ident, [ ",", ident ], "in" ], expr, block;
 exprStmt = exprWithBlock | ( exprWithoutBlock, ";" );
@@ -128,29 +116,32 @@ infix = expr, "+",     expr
 	|   expr, "and",    expr
 
 
-	|   expr, ".", ident
+	|   expr, ".", ident (* flags |= WAS_TYPE *)
 
 	|   expr, "..",     expr
 	|   expr, "..<",    expr
 	|   expr, "orelse", expr
 	|   expr, "as",     type;
-postfix = ( expr, ".-"                              )
-	|     ( expr, ".*"                              )
-	|     ( expr, ".&"                              )
-	|     ( expr, ".!"                              )
-	|     ( expr, ".", "(", type, ")"               )
-	|     ( expr, "(", [ expr, { ",", expr } ], ")" )
-	|     ( expr, "[", expr, "]"                    );
-literals = number | char | string | "(" expr ")" | ident
-	|      ( [ ident, ':' ],  exprWithBlock );
-(* no lookahead - ident, [ ":", exprWithBlock ] *)
+postfix = ( expr, ".-"                                   )
+	|     ( expr, ".*"                                   )
+	|     ( expr, ".&"                                   )
+	|     ( expr, ".!"                                   )
+	|     ( expr, ".", "(", type, ")"                    )
+	|     ( expr, "(", [ expr, { ",", expr } ], ")"      )  (* flags |= WAS_TYPE *)
+	|     ( expr, "[", expr, "]"                         )
+	|     ( expr, "{", [ initLit, { "," initLit } ], "}" ); (* only if flags & (WAS_TYPE | TYPE_INIT) *)
+initLit = ( "[", expr, "]" ) | expr, "=", expr;
 
+literals = number | char | string | "(" expr ")"
+	| ident (* flags |= WAS_TYPE *)
+	| type  (* flags |= WAS_TYPE *)
+	| ( "#type" type )
+	| exprWithBlock;
 
-
-exprWithBlock = block
-	|           if
-	|           switch
-	|           procExpr;
+exprWithBlock = [ ident, ':' ], block
+	|                           if
+	|                           switch
+	|                           procExpr;
 if = "if" expr, block,
 	{ "else", "if", expr, block },
 	[ "else", block ];

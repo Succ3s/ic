@@ -2,6 +2,32 @@
 
 #import fmt "std:fmt"
 
+//
+//
+// comptime-ish find
+//
+//
+
+proc find(const f: const T, const arr: []T) union{uint} {
+	#for i in arr {
+		#if i == f {
+			break:find i;
+		}
+	}
+	null
+}
+
+
+
+
+
+
+//
+//
+// null safety
+//
+//
+
 proc test_null_safety() {
 	// null safety
 	// - ptrs, anyptr       // they are pointers
@@ -9,7 +35,7 @@ proc test_null_safety() {
 	// - proc               // proc pointer
 	// - slice, string, any // null if the inner pointer is null
 	// - enum, union        // except @NoNull
-	alias Foo struct {
+	const Foo = struct {
 		x: struct {
 			y: struct { z: !*i32 },
 		},
@@ -17,16 +43,24 @@ proc test_null_safety() {
 	}
 	var v = 1;
 	var _1: Foo;                   // error
-	var _2 = Foo { b = true     }; // error
-	var _3 = Foo { x.y.z = null }; // error
-	var _4 = Foo { x.y.z = v.&  }; // ok
+	var _2 = new Foo { b = true     }; // error
+	var _3 = new Foo { x.y.z = null }; // error
+	var _4 = new Foo { x.y.z = v.&  }; // ok
 }
 
+
+
+
+
+
+
+//
+//
+// control flow
+//
+//
+
 proc test(x: X) bool {
-	var a := 42;
-
-
-
 	var d: union{int, bool} = true;
 	var res = switch d {
 		x: int if x == 1 { true  }
@@ -35,20 +69,27 @@ proc test(x: X) bool {
 	};
 
 	switch 1 {
-		2, 3  { println("foo") }
-		1..10 { println("aaa") }
+		2, 3  { fmt.println("foo") }
+		1..10 { fmt.println("aaa") }
 	}
 
-	if  x.(bool) != null             { println("aaa");   }
-	for i in 0..1                    { println("%v", i); }
-	if  true { println("aaa") } else { println("bbb");   }
+	if  x.(bool) != null                 { fmt.println("aaa"); }
+	for i in 0..1                        { fmt.println(i);     }
+	if  true { fmt.println("aaa") } else { fmt.println("bbb"); }
 }
+
+
+//
+//
+// reflection
+//
+//
 
 #import t "core:type"
 proc print_struct(s: any) {
-	switch s.info {
+	switch t.type_info(s.id) {
 		x: t.Named  {
-			fmt.print("struct %s { ", x.name);
+			fmt.printf("struct %s { ", x.name);
 			var x = x.inner.(t.Struct); // union cast returns union{T}
 			assert(x != null); // union{T} can be compared to null
 			// x is T here
@@ -65,9 +106,9 @@ proc print_struct(s: any) {
 
 proc print_fields(s: t.Struct) {
 	assert(s.fields >= 1);
-	fmt.println("%s", s.names[0]);
+	fmt.print(s.names[0]);
 	for i in 1..s.fields {
-		fmt.println(", %s", s.names[i]);
+		fmt.print(", %s", s.names[i]);
 	}
 }
 
@@ -79,7 +120,7 @@ proc print_fields(s: t.Struct) {
 //
 //
 
-type Arith(T: type) struct {
+const Arith(T: typeid) = #type struct {
 	add: proc(a, b: T) T;
 	sub: proc(a, b: T) T;
 	mul: proc(a, b: T) T;
@@ -96,11 +137,11 @@ const i32Arith = Arith(i32) {
 };
 
 proc stuff(
-	const arith: Arith(const T: type)),
+	const arith: Arith(const T: typeid)),
 	a, b: T
 ) T { arith.add(a, arith.mul(b, b)) }
 
-proc test_trait_ish() { fmt.println("%s", stuff(i32Arith, 2.-, 7)) }
+proc test_trait_ish() { fmt.println(stuff(i32Arith, 2.-, 7)) }
 
 //
 //
@@ -109,9 +150,9 @@ proc test_trait_ish() { fmt.println("%s", stuff(i32Arith, 2.-, 7)) }
 //
 
 proc test_types() {
-	type  MyInt    int;
-	alias IntAlias int;
+	const IntType  = #type int;
+	const IntAlias =       int;
 
-	assert(typeid(MyInt) != typeid(int));
-	assert(typeid(IntAlias) == typeid(int));
+	assert(IntType  != int);
+	assert(IntAlias == int);
 }
