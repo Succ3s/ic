@@ -8,7 +8,7 @@
 //
 //
 
-proc find(const f: const T, const arr: []T) union{uint} {
+proc find(const f: const T, const arr: []T) -> union{uint} {
 	#for i in arr {
 		#if i == f {
 			break:find i;
@@ -35,7 +35,7 @@ proc test_null_safety() {
 	// - proc               // proc pointer
 	// - slice, string, any // null if the inner pointer is null
 	// - enum, union        // except @NoNull
-	const Foo = struct {
+	alias Foo struct {
 		x: struct {
 			y: struct { z: !*i32 },
 		},
@@ -43,9 +43,9 @@ proc test_null_safety() {
 	}
 	var v = 1;
 	var _1: Foo;                   // error
-	var _2 = new Foo { b = true     }; // error
-	var _3 = new Foo { x.y.z = null }; // error
-	var _4 = new Foo { x.y.z = v.&  }; // ok
+	var _2 = Foo { b = true     }; // error
+	var _3 = Foo { x.y.z = null }; // error
+	var _4 = Foo { x.y.z = v.&  }; // ok
 }
 
 
@@ -60,7 +60,7 @@ proc test_null_safety() {
 //
 //
 
-proc test(x: X) bool {
+proc test(x: X) -> bool {
 	var d: union{int, bool} = true;
 	var res = switch d {
 		x: int if x == 1 { true  }
@@ -120,26 +120,26 @@ proc print_fields(s: t.Struct) {
 //
 //
 
-const Arith(T: typeid) = #type struct {
-	add: proc(a, b: T) T;
-	sub: proc(a, b: T) T;
-	mul: proc(a, b: T) T;
-	div: proc(a, b: T) T;
+type Arith(T: typeid) struct {
+	add: proc(a, b: T) -> T;
+	sub: proc(a, b: T) -> T;
+	mul: proc(a, b: T) -> T;
+	div: proc(a, b: T) -> T;
 }
 
 
 
 const i32Arith = Arith(i32) {
-	add: proc(a, b: i32) i32 { a + b }
-	sub: proc(a, b: i32) i32 { a - b }
-	mul: proc(a, b: i32) i32 { a * b }
-	div: proc(a, b: i32) i32 { a / b }
+	add: proc(a, b: i32) -> i32 { a + b }
+	sub: proc(a, b: i32) -> i32 { a - b }
+	mul: proc(a, b: i32) -> i32 { a * b }
+	div: proc(a, b: i32) -> i32 { a / b }
 };
 
 proc stuff(
 	const arith: Arith(const T: typeid)),
 	a, b: T
-) T { arith.add(a, arith.mul(b, b)) }
+) -> T { arith.add(a, arith.mul(b, b)) }
 
 proc test_trait_ish() { fmt.println(stuff(i32Arith, 2.-, 7)) }
 
@@ -150,8 +150,8 @@ proc test_trait_ish() { fmt.println(stuff(i32Arith, 2.-, 7)) }
 //
 
 proc test_types() {
-	const IntType  = #type int;
-	const IntAlias =       int;
+	type IntType   int;
+	alias IntAlias int;
 
 	assert(IntType  != int);
 	assert(IntAlias == int);

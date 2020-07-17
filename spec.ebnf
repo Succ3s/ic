@@ -27,6 +27,7 @@ package = "#package", ident;
 
 item = import
 	|  proc
+	|  typeDecl
 	|  decl;
 
 import = "#import", ident, stringLit;
@@ -36,27 +37,28 @@ argDef = ident ":" type;
 
 decl = "const" | "var", ident, [ ":", type ], [ "=", expr ], ";";
 
+typeDecl = "alias" | "type", ident, (typesWithoutBlock, ";") | (typesWithBlock, [";"]);
 
 type = typesWithoutBlock | typesWithBlock;
-typesWithoutBlock = ["!"], namedType (* only if flags & EXPR_SUBSET *)
+typesWithoutBlock = ["!"], namedType
 	|                      procType
 	|                      ptrType
 	|                      sliceType
 	|                      arrayType
 	|                      ptrArrayType;
-namedType    = ident;                                                  (* flags |= TYPE_INIT *)
-procType     = "*", "proc", "(", [argDef, {",", argDef}], ")", [type]; (* flags ^= TYPE_INIT *)
-ptrType      = "*", type;                                              (* flags ^= TYPE_INIT *)
-sliceType    = "[", "]", type;                                         (* flags |= TYPE_INIT *)
-arrayType    = "[", expr, "]", type;                                   (* flags |= TYPE_INIT *)
-ptrArrayType = "[", "*", "]", type;                                    (* flags |= TYPE_INIT *)
+namedType    = ident;
+procType     = "*", "proc", "(", [argDef, {",", argDef}], ")", [type];)
+ptrType      = "*", type;
+sliceType    = "[", "]", type;
+arrayType    = "[", expr, "]", type;
+ptrArrayType = "[", "*", "]", type;
 
 typesWithBlock = struct
 	|            union
 	|            enum;
-struct   = "struct", "{", [ argDef, { ",", argDef } ],   "}"; (* flags |= TYPE_INIT *)
-union    = "union",  "{", [ type, { ",", type } ],       "}"; (* flags ^= TYPE_INIT *)
-enum     = "enum",   "{", [ enumKey, { ",", enumKey } ], "}"; (* flags ^= TYPE_INIT *)
+struct   = "struct", "{", [ argDef, { ",", argDef } ],   "}";
+union    = "union",  "{", [ type, { ",", type } ],       "}";
+enum     = "enum",   "{", [ enumKey, { ",", enumKey } ], "}";
 enumKey  = ident, [ "=", expr ];
 
 
@@ -84,7 +86,7 @@ exprStmt = exprWithBlock | ( exprWithoutBlock, ";" );
 
 11 (???) ::    group
 10 (???) ::    number, ident, string, char, literal
-9  (ltr) ::    ., call, index, .-, .*, .&, .!, exprWithBlock, cast
+9  (ltr) ::    ., call, index, .-, .*, .&, .!, exprWithBlock, cast, init
 7  (ltr) ::    *, /, %
 6  (ltr) ::    +, -
 5  (ltr) ::    ==, !=
@@ -99,44 +101,46 @@ exprStmt = exprWithBlock | ( exprWithoutBlock, ";" );
 expr = exprWithoutBlock | exprWithBlock;
 
 exprWithoutBlock = infix | postfix | literals;
-infix = expr, "+",     expr
-	|   expr, "-",     expr
-	|   expr, "*",     expr
-	|   expr, "/",     expr
-	|   expr, "%",     expr
+infix = expr, "+",     expr                                  (* flags &= ~EXPR_TYPE_INIT *)
+	|   expr, "-",     expr                                  (* flags &= ~EXPR_TYPE_INIT *)
+	|   expr, "*",     expr                                  (* flags &= ~EXPR_TYPE_INIT *)
+	|   expr, "/",     expr                                  (* flags &= ~EXPR_TYPE_INIT *)
+	|   expr, "%",     expr                                  (* flags &= ~EXPR_TYPE_INIT *)
 
-	|   expr, ">",      expr
-	|   expr, "<",      expr
-	|   expr, "==",     expr
-	|   expr, "!=",     expr
-	|   expr, ">=",     expr
-	|   expr, "<=",     expr
+	|   expr, ">",      expr                                 (* flags &= ~EXPR_TYPE_INIT *)
+	|   expr, "<",      expr                                 (* flags &= ~EXPR_TYPE_INIT *)
+	|   expr, "==",     expr                                 (* flags &= ~EXPR_TYPE_INIT *)
+	|   expr, "!=",     expr                                 (* flags &= ~EXPR_TYPE_INIT *)
+	|   expr, ">=",     expr                                 (* flags &= ~EXPR_TYPE_INIT *)
+	|   expr, "<=",     expr                                 (* flags &= ~EXPR_TYPE_INIT *)
 
-	|   expr, "or",     expr
-	|   expr, "and",    expr
+	|   expr, "or",     expr                                 (* flags &= ~EXPR_TYPE_INIT *)
+	|   expr, "and",    expr                                 (* flags &= ~EXPR_TYPE_INIT *)
 
 
-	|   expr, ".", ident (* flags |= WAS_TYPE *)
+	|   expr, ".", ident                                     (* flags |= EXPR_TYPE_INIT *)
 
-	|   expr, "..",     expr
-	|   expr, "..<",    expr
-	|   expr, "orelse", expr
-	|   expr, "as",     type;
-postfix = ( expr, ".-"                                   )
-	|     ( expr, ".*"                                   )
-	|     ( expr, ".&"                                   )
-	|     ( expr, ".!"                                   )
-	|     ( expr, ".", "(", type, ")"                    )
-	|     ( expr, "(", [ expr, { ",", expr } ], ")"      )  (* flags |= WAS_TYPE *)
-	|     ( expr, "[", expr, "]"                         )
-	|     ( expr, "{", [ initLit, { "," initLit } ], "}" ); (* only if flags & (WAS_TYPE | TYPE_INIT) *)
+	|   expr, "..",     expr                                 (* flags &= ~EXPR_TYPE_INIT *)
+	|   expr, "..<",    expr                                 (* flags &= ~EXPR_TYPE_INIT *)
+	|   expr, "orelse", expr                                 (* flags &= ~EXPR_TYPE_INIT *)
+	|   expr, "as",     type;                                (* flags &= ~EXPR_TYPE_INIT *)
+postfix = ( expr, ".-"                                    )  (* flags &= ~EXPR_TYPE_INIT *)
+	|     ( expr, ".*"                                    )  (* flags &= ~EXPR_TYPE_INIT *)
+	|     ( expr, ".&"                                    )  (* flags &= ~EXPR_TYPE_INIT *)
+	|     ( expr, ".!"                                    )  (* flags &= ~EXPR_TYPE_INIT *)
+	|     ( expr, ".", "(", type, ")"                     )  (* flags &= ~EXPR_TYPE_INIT *)
+	|     ( expr, "(", [ expr, { ",", expr } ], ")"       )  (* flags |= EXPR_TYPE_INIT *)
+	|     ( expr, "[", expr, "]"                          )  (* flags &= ~EXPR_TYPE_INIT *)
+	|     ( expr, "{", [ initLit, { ",", initLit } ], "}" ); (* only if flags & EXPR_TYPE_INIT, flags &= ~EXPR_TYPE_INIT *)
 initLit = ( "[", expr, "]" ) | expr, "=", expr;
 
-literals = number | char | string | "(" expr ")"
-	| ident (* flags |= WAS_TYPE *)
-	| type  (* flags |= WAS_TYPE *)
-	| ( "#type" type )
-	| exprWithBlock;
+literals = number | char | string | "(" expr ")"             (* flags &= ~EXPR_TYPE_INIT *)
+	| ident                                                  (* flags |= EXPR_TYPE_INIT *)
+	| initTypes                                              (* flags |= EXPR_TYPE_INIT *)
+	| exprWithBlock;                                         (* flags &= ~EXPR_TYPE_INIT *)
+
+initTypes = sliceType | arrayType | ptrArrayType;
+
 
 exprWithBlock = [ ident, ':' ], block
 	|                           if

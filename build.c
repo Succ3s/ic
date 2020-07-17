@@ -1,9 +1,6 @@
-#include "src/lex.c"
 #include "src/common.h"
-#include "src/parse.h"
+#include "src/lex.c"
 #include "src/parse.c"
-
-// #include "src/common.h"
 
 int main() {
 	// print_size();
