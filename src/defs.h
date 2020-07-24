@@ -1,6 +1,12 @@
 #ifndef DASH_DEFS_INCLUDE
 #define DASH_DEFS_INCLUDE
 
+
+#include <stdint.h>
+#include <stddef.h>
+#include <string.h>
+#include <stdlib.h>
+
 // TODO(pgs): format string for each type
 
 
@@ -12,8 +18,6 @@ typedef _Bool bool;
 #define true  ((bool)1)
 #define false ((bool)0)
 
-#include <stdint.h>
-#include <stddef.h>
 typedef int8_t    i8;
 typedef int16_t   i16;
 typedef int32_t   i32;
@@ -28,19 +32,6 @@ typedef size_t   usize;
 
 typedef float  f32;
 typedef double f64;
-
-
-// ====== String
-typedef char*                            cstring;
-typedef struct { char* ptr; usize len; } string;
-
-#include <string.h>
-string string_from_cstring(cstring s) {
-	return (string) {
-		.ptr = s,
-		.len = strlen(s),
-	};
-}
 
 
 
@@ -59,210 +50,168 @@ string string_from_cstring(cstring s) {
 
 
 
+#define heap_alloc(s)      (malloc((s)))
+#define heap_dealloc(p)    (free((p)))
+#define heap_realloc(p, s) (realloc((p), (s)))
+
+
+
+// ====== String
+typedef struct { char* ptr; usize len; } string;
+typedef char*                           cstring;
+
+#define cstr_len(s) (strlen(s))
+
+string string_from_cstring(cstring s) {
+	return (string) {
+		.ptr = s,
+		.len = strlen(s),
+	};
+}
+
+cstring str_to_cstr(string t) {
+	if(t.ptr[t.len] == '\0') { return t.ptr; }
+	cstring p = heap_alloc(t.len + 1);
+	if(p == null) return null;
+	memcpy(p, t.ptr, t.len);
+	p[t.len] = '\0';
+	return p;
+}
+
+cstring cstr_dup(cstring s) {
+	int len = cstr_len(s);
+	cstring p = heap_alloc(len + 1);
+	if(p == null) return null;
+	memcpy(p, s, len + 1);
+	return p;
+}
+
+
+
+
 
 
 
 
 // ====== Allocators
 
-usize alignup(u8* addr, usize align) {
-    return ((usize)addr + align - 1) & ~(align - 1);
-}
+// usize alignup(u8* addr, usize align) {
+//     return ((usize)addr + align - 1) & ~(align - 1);
+// }
 
-enum {
-	AllocatorAlloc,
-	AllocatorDealloc,
-	AllocatorRealloc,
-	AllocatorCleanup,
-};
-typedef void* (*AllocatorProc)(void* allocatorData, u8 kind, void* ptr, usize size);
+// enum {
+// 	AllocatorAlloc,
+// 	AllocatorDealloc,
+// 	AllocatorRealloc,
+// 	AllocatorCleanup,
+// };
+// typedef void* (*AllocatorProc)(void* allocatorData, u8 kind, void* ptr, usize size);
 
-typedef struct {
-	void* data;
-	AllocatorProc proc;
-} Allocator;
+// typedef struct {
+// 	void* data;
+// 	AllocatorProc proc;
+// } Allocator;
 
-void* allocator_alloc(Allocator* a, usize size) {
-	return a->proc(
-		a->data,
-		AllocatorAlloc,
-		null,
-		size
-	);
-}
-void allocator_dealloc(Allocator* a, void* ptr) {
-	a->proc(
-		a->data,
-		AllocatorDealloc,
-		ptr,
-		0
-	);
-}
-void* allocator_realloc(Allocator* a, void* ptr, usize size) {
-	return a->proc(
-		a->data,
-		AllocatorRealloc,
-		ptr,
-		size
-	);
-}
+// void* allocator_alloc(Allocator a, usize size) {
+// 	return a->proc(
+// 		a->data,
+// 		AllocatorAlloc,
+// 		null,
+// 		size
+// 	);
+// }
+// void allocator_dealloc(Allocator a, void* ptr) {
+// 	a->proc(
+// 		a->data,
+// 		AllocatorDealloc,
+// 		ptr,
+// 		0
+// 	);
+// }
+// void* allocator_realloc(Allocator a, void* ptr, usize size) {
+// 	return a->proc(
+// 		a->data,
+// 		AllocatorRealloc,
+// 		ptr,
+// 		size
+// 	);
+// }
 
-void allocator_cleanup(Allocator* a) {
-	a->proc(
-		a->data,
-		AllocatorCleanup,
-		null,
-		0
-	);
-}
+// void allocator_cleanup(Allocator a) {
+// 	a->proc(
+// 		a->data,
+// 		AllocatorCleanup,
+// 		null,
+// 		0
+// 	);
+// }
 
-cstring string_to_cstring(Allocator* al, string t) {
-	cstring p = allocator_alloc(al, t.len + 1);
-	if(p == null) return null;
-	strncpy(p, t.ptr, t.len);
-	p[t.len] = '\0';
-	return p;
-}
+// cstring string_to_cstring(Allocator al, string t) {
+// 	if(t.ptr[t.len] == '\0') { return t.ptr; }
+// 	cstring p = allocator_alloc(al, t.len + 1);
+// 	if(p == null) return null;
+// 	strncpy(p, t.ptr, t.len);
+// 	p[t.len] = '\0';
+// 	return p;
+// }
 
-#include <stdlib.h>
-void* _std_allocator_proc(void* _, u8 kind, void* ptr, usize size) {
-	switch(kind) {
-		case AllocatorDealloc:
-			free(ptr);
-			return null;
-		default:
-			return realloc(ptr, size);
-	}
-}
+// #include <stdlib.h>
+// void* _std_allocator_proc(void* _, u8 kind, void* ptr, usize size) {
+// 	switch(kind) {
+// 		case AllocatorDealloc:
+// 			free(ptr);
+// 			return null;
+// 		default:
+// 			return realloc(ptr, size);
+// 	}
+// }
 
-Allocator std_allocator() {
-	return (Allocator) {
-		.data = null,
-		.proc = &_std_allocator_proc,
-	};
-}
+// Allocator std_allocator() {
+// 	return (Allocator) {
+// 		.data = null,
+// 		.proc = &_std_allocator_proc,
+// 	};
+// }
 
+// #define Array(T) T*
+// typedef struct { Allocator allocator; isize len, cap, size; } ArrayHeader;
+// #define get_array_header(ptr) ((ArrayHeader*)(ptr) - 1)
+// #define array_len(ptr) (get_array_header((ptr))->len)
+// #define array_cap(ptr) (get_array_header((ptr))->cap)
+// #define array_init(arr, al, size, init_cap) (impl_array_init((Array(void)*)arr, (al), (size), (init_cap)))
+// #define array_push(arr, ptr)                (impl_array_push((Array(void)*)arr, (ptr)))
 
-struct _BumpArena {
-	struct _BumpArena* last;
-	u8* begin;
-	u8* cursor;
-	u8* end;
-};
+// bool impl_array_init(Array(void)* arr, Allocator allocator, isize size, isize init_cap) {
+// 	if(arr != null && *arr != null) { allocator_dealloc(allocator, *arr); }
+// 	ArrayHeader* h = allocator_alloc(allocator, (sizeof(ArrayHeader) + (init_cap * size)));
+// 	if(h == null) { return false; }
+// 	h->allocator = allocator;
+// 	h->len  = 0;
+// 	h->cap  = init_cap;
+// 	h->size = size;
+// 	*arr = h + 1;
+// 	return true;
+// }
 
-struct GrowingBumpAllocator {
-	Allocator* host_allocator;
-	usize arena_size;
-	struct _BumpArena* tail;
-};
+// bool impl_array_push(Array(void)* arrr, void* ptr) {
+// 	Array(u8)* arr = (Array(u8)*)arrr;
+// 	if(arr == null)  { return false; }
+// 	if(*arr == null) { return false; }
+// 	ArrayHeader* head = get_array_header(*arr);
+// 	if(head->len + 1 > head->cap) {
+// 		head->cap *= 2;
+// 		ArrayHeader* tmp = allocator_realloc(head->allocator, head,
+// 			sizeof(ArrayHeader) + (head->cap * head->size)
+// 		);
+// 		if(tmp == null) { return false; }
+// 		tmp += 1;
+// 		*arr = (Array(void))tmp;
+// 		// TODO(pgs): grow
+// 	}
+// 	memcpy(*arr + (head->len * head->size), ptr, head->size);
+// 	head->len+=1;
+// 	return true;
+// }
 
-struct _BumpArena* _GrowingBumpAllocator_new_arena(struct GrowingBumpAllocator* b) {
-	usize alloc_size = sizeof(struct _BumpArena) + b->arena_size;
-	struct _BumpArena* arena = allocator_alloc(b->host_allocator, alloc_size);
-	if(arena == null) return null;
-	arena->begin = (u8*)arena + sizeof(struct _BumpArena);
-	arena->end = (u8*)arena + alloc_size;
-	arena->cursor = arena->begin;
-	arena->last = b->tail;
-	b->tail = arena;
-	return arena;
-}
-
-void* _growing_bump_allocator_proc(void* __data, u8 kind, void* ptr, usize size) {
-	struct GrowingBumpAllocator* data = __data;
-	switch(kind) {
-		case AllocatorAlloc: {
-			struct _BumpArena* arena = data->tail;
-			u8* newPos = (u8*)alignup(arena->cursor + size, sizeof(usize));
-			if(newPos > arena->end || arena == null) {
-				arena = _GrowingBumpAllocator_new_arena(data);
-				newPos = arena->cursor + size;
-				if(arena == null) { return null; }
-			}
-
-			u8* ret = arena->cursor;
-			arena->cursor = newPos;
-			return ret;
-
-			break;
-		}
-		case AllocatorDealloc: return null;
-		case AllocatorRealloc:
-			return _growing_bump_allocator_proc(
-				data,
-				AllocatorAlloc,
-				null,
-				size
-			);
-		case AllocatorCleanup:
-			for(struct _BumpArena* a = data->tail;a != null;) {
-				struct _BumpArena* next = a->last;
-				allocator_dealloc(data->host_allocator, a);
-				a = next;
-			}
-	}
-}
-
-Allocator growing_bump_allocator(struct GrowingBumpAllocator* target, Allocator* host_allocator, usize arena_size) {
-	*target = (struct GrowingBumpAllocator) {
-		.host_allocator = host_allocator,
-		.arena_size = arena_size,
-	};
-	_GrowingBumpAllocator_new_arena(target);
-	return (Allocator) {
-		.data = target,
-		.proc = _growing_bump_allocator_proc,
-	};
-}
-
-
-// Chunked List
-
-#define ChunkedList(T, S)              ChunkedList_ ## T ## _ ## S
-#define ChunkedListNode(T, S)          ChunkedListNode_ ## T ## _ ## S
-#define _ChunkedList_create_node(T, S) _ChunkedList_ ## T ## _ ## S ## _create_node
-#define _ChunkedList_append(T, S)      _ChunkedList_ ## T ## _ ## S ## _append
-#define ChunkedList_push(T, S)         ChunkedList_ ## T ## _ ## S ## _push
-#define ChunkedListImpl(T, S)                                                 \
-typedef struct ChunkedListNode(T, S) ChunkedListNode(T, S);                   \
-typedef struct ChunkedList(T, S) ChunkedList(T, S);                           \
-struct ChunkedList(T, S) {                                                    \
-    ChunkedListNode(T, S)* head;                                              \
-    ChunkedListNode(T, S)* tail;                                              \
-};                                                                            \
-struct ChunkedListNode(T, S) {                                                \
-    ChunkedListNode(T, S)* next;                                              \
-    usize count;                                                              \
-    T data[S];                                                                \
-};                                                                            \
-bool _ChunkedList_create_node(T, S)(ChunkedList(T, S)* list, Allocator* al) { \
-    ChunkedListNode(T, S)* _new = allocator_alloc(                            \
-        al,                                                                   \
-        sizeof(ChunkedListNode(T, S)));                                       \
-    if(_new == null) { return false; }                                        \
-    *_new = (ChunkedListNode(T, S)){0};                                       \
-    if(list->tail != null) {                                                  \
-        list->tail->next = _new;                                              \
-    }                                                                         \
-    list->tail = _new;                                                        \
-    return true;                                                              \
-}                                                                             \
-bool _ChunkedList_append(T, S)(ChunkedList(T, S)* list, T val) {              \
-    ChunkedListNode(T, S)* t = list->tail;                                    \
-    if(t->count >= S) { return false; }                                       \
-    t->data[t->count] = val;                                                  \
-    t->count += 1;                                                            \
-    return true;                                                              \
-}                                                                             \
-bool ChunkedList_push(T, S)(ChunkedList(T, S)* list, Allocator* al, T val) {  \
-    if(list->tail == null) {                                                  \
-        *list = (ChunkedList(T, S)) {0};                                      \
-        _ChunkedList_create_node(T, S)(list, al);                             \
-        list->head = list->tail;                                              \
-    }                                                                         \
-    if(_ChunkedList_append(T, S)(list, val)) { return true; }                 \
-    if(!_ChunkedList_create_node(T, S)(list, al)) { return false; }           \
-    return _ChunkedList_append(T, S)(list, val);                              \
-}
 
 #endif

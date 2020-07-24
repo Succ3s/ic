@@ -1,4 +1,6 @@
 #include <string.h>
+#include "./parse.h"
+#include "./ast.h"
 
 #define ERR_MESSAGE(var, msg)             \
 const char* var = msg;                    \
@@ -14,7 +16,7 @@ cstring str      = allocator_alloc(                        \
 	SIZEOF_ERR_UNEXPECTED + strlen(expected) + strlen(got) \
 );                                                         \
 sprintf(str, ERR_UNEXPECTED, expected, got);               \
-parser_push_err(p, (Error) {                                 \
+parser_push_err(p, (Error) {                               \
 	.lvl = ErrorLevelError,                                \
 	.loc = __VA_ARGS__,                                    \
 	.msg = string_from_cstring(str),                       \

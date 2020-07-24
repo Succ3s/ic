@@ -21,12 +21,11 @@ TODO:
 
 ident = ? TODO ?;
 
-file = package, { item };
+file = package, { import }, { item };
 
 package = "#package", ident;
 
-item = import
-	|  proc
+item = proc
 	|  typeDecl
 	|  decl;
 
@@ -69,7 +68,7 @@ block = "{", { stmt }, [ expr ], "}";
 
 
 stmt = ";"
-	|  item
+	|  decl
 	|  for
 	|  exprStmt
 	|  ( "break",    ":", ident, [ expr ], ";" )
@@ -109,10 +108,10 @@ infix = expr, "+",     expr                                  (* flags &= ~EXPR_T
 
 	|   expr, ">",      expr                                 (* flags &= ~EXPR_TYPE_INIT *)
 	|   expr, "<",      expr                                 (* flags &= ~EXPR_TYPE_INIT *)
-	|   expr, "==",     expr                                 (* flags &= ~EXPR_TYPE_INIT *)
-	|   expr, "!=",     expr                                 (* flags &= ~EXPR_TYPE_INIT *)
 	|   expr, ">=",     expr                                 (* flags &= ~EXPR_TYPE_INIT *)
 	|   expr, "<=",     expr                                 (* flags &= ~EXPR_TYPE_INIT *)
+	|   expr, "==",     expr                                 (* flags &= ~EXPR_TYPE_INIT *)
+	|   expr, "!=",     expr                                 (* flags &= ~EXPR_TYPE_INIT *)
 
 	|   expr, "or",     expr                                 (* flags &= ~EXPR_TYPE_INIT *)
 	|   expr, "and",    expr                                 (* flags &= ~EXPR_TYPE_INIT *)
@@ -122,8 +121,7 @@ infix = expr, "+",     expr                                  (* flags &= ~EXPR_T
 
 	|   expr, "..",     expr                                 (* flags &= ~EXPR_TYPE_INIT *)
 	|   expr, "..<",    expr                                 (* flags &= ~EXPR_TYPE_INIT *)
-	|   expr, "orelse", expr                                 (* flags &= ~EXPR_TYPE_INIT *)
-	|   expr, "as",     type;                                (* flags &= ~EXPR_TYPE_INIT *)
+	|   expr, "orelse", expr;                                (* flags &= ~EXPR_TYPE_INIT *)
 postfix = ( expr, ".-"                                    )  (* flags &= ~EXPR_TYPE_INIT *)
 	|     ( expr, ".*"                                    )  (* flags &= ~EXPR_TYPE_INIT *)
 	|     ( expr, ".&"                                    )  (* flags &= ~EXPR_TYPE_INIT *)
