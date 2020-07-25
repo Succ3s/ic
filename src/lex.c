@@ -28,11 +28,11 @@ Token _lex_build_token(Lexer* newLex, Lexer* oldLex, usize TokenKind) {
 }
 
 #define _maybe_double(fst, fstTok, scd, scdTok)        \
-case fst:                                             \
-    if(lex_peek_char(lex, 0) == scd) {                \
-        lex_next_char(lex);                           \
+case fst:                                              \
+    if(lex_peek_char(lex, 0) == scd) {                 \
+        lex_next_char(lex);                            \
         return _lex_build_token(lex, &oldLex, scdTok); \
-    }                                                 \
+    }                                                  \
     return _lex_build_token(lex, &oldLex, fstTok);
 
 #define _build_token(tok)               _lex_build_token(lex, &oldLex, tok)

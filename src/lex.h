@@ -1,5 +1,5 @@
-#ifndef DASH_LEX_INCLUDE
-#define DASH_LEX_INCLUDE
+#ifndef DASH_HEADER_LEX
+#define DASH_HEADER_LEX
 
 #include "token.h"
 #include "common.h"

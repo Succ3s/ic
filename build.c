@@ -19,16 +19,14 @@ int main() {
 	// __builtin_printf("8: %d\n", ir_const(&f, noc));
 	// __builtin_printf("9: %d\n", ir_const(&f, noc));
 
+	Hospital* h = &(Hospital){0};
+	hospital_init(h);
+	__builtin_printf("%d\n", hospital_intern(h, "hello"));
+	__builtin_printf("%d\n", hospital_intern(h, "world"));
+	__builtin_printf("%d\n", hospital_intern(h, "world"));
+	__builtin_printf("%d\n", hospital_find_patient(*h, "hello"));
+	__builtin_printf("%d\n", hospital_intern(*h, "FAWGFKAWBAUWIGBAWÇBGUAWUGWAUGWOFGWAUFGUAWUGFIAWGFWAIFGAWFG"));
 
-	Hospital* h = &(Hospital) {0};
-	init_hospital(h);
-	__builtin_printf("%d\n", intern(h, "hello"));
-	__builtin_printf("%d\n", intern(h, "world"));
-	__builtin_printf("%d\n", intern(h, "hello"));
-	__builtin_printf("%d\n", find_patient(*h, "hello"));
-	__builtin_printf("%d\n", find_patient(*h, "world"));
-	__builtin_printf("%d\n", intern(h, "GFIOAWGUOAWHGUOAWHGOAUW"));
-	// __builtin_printf("%d\n", intern(h, "hello"));
 	return 0;
 // #	ifdef IR_TEST
 // 	ir_test();

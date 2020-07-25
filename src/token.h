@@ -1,5 +1,5 @@
-#ifndef DASH_TOKEN_INCLUDE
-#define DASH_TOKEN_INCLUDE
+#ifndef DASH_HEADER_TOKEN
+#define DASH_HEADER_TOKEN
 
 #include "common.h"
 #include "common.h"

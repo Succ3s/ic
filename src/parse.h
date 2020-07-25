@@ -1,5 +1,5 @@
-#ifndef DASH_PARSE_INCLUDE
-#define DASH_PARSE_INCLUDE
+#ifndef DASH_HEADER_PARSE
+#define DASH_HEADER_PARSE
 
 #include "ast.h"
 #include "lex.h"
