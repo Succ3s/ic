@@ -1,5 +1,5 @@
-#ifndef DASH_HEADER_PARSE
-#define DASH_HEADER_PARSE
+#ifndef G_HEADER_PARSE
+#define G_HEADER_PARSE
 
 #include "ast.h"
 #include "lex.h"
@@ -13,7 +13,7 @@ ChunkedListImpl(Error, 8)
 
 typedef struct {
 	Lexer*                lex;
-	string                file;
+	str                file;
 	Allocator*            allocator;
 	ChunkedList(Error, 8) errors;
 	u8                    flags;

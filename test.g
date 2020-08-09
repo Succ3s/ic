@@ -28,19 +28,20 @@ proc find(const f: const T, const arr: []T) -> union{uint} {
 //
 //
 
+// null safety
+	// - ptrs, anyptr    // they are pointers
+	// - cstr            // cstr is a strong alias to *u8
+	// - proc            // proc pointer
+	// - slice, str, any // null if the inner pointer is null
+	// - enum, union     // except @NoNull
+alias Foo struct {
+	x: struct {
+		y: struct { z: !*i32 },
+	},
+	b: bool
+}
+
 proc test_null_safety() {
-	// null safety
-	// - ptrs, anyptr       // they are pointers
-	// - cstring            // cstring is a strong alias to *u8
-	// - proc               // proc pointer
-	// - slice, string, any // null if the inner pointer is null
-	// - enum, union        // except @NoNull
-	alias Foo struct {
-		x: struct {
-			y: struct { z: !*i32 },
-		},
-		b: bool,
-	}
 	var v = 1;
 	var _1: Foo;                   // error
 	var _2 = Foo { b = true     }; // error
@@ -149,10 +150,24 @@ proc test_trait_ish() { fmt.println(stuff(i32Arith, 2.-, 7)) }
 //
 //
 
+type  IntType  int;
+alias IntAlias int;
 proc test_types() {
-	type IntType   int;
-	alias IntAlias int;
-
 	assert(IntType  != int);
 	assert(IntAlias == int);
+}
+
+//
+//
+// UFCS-ish
+//
+//
+
+
+proc neg(x: $T) -> T where t.is_numeric(T) { x.! }
+
+proc test_ufcs_ish() {
+	var a = 10;
+	a->neg()
+	 ->prinln();
 }

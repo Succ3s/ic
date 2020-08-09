@@ -1,7 +1,6 @@
-#ifndef DASH_HEADER_TOKEN
-#define DASH_HEADER_TOKEN
+#ifndef G_HEADER_TOKEN
+#define G_HEADER_TOKEN
 
-#include "common.h"
 #include "common.h"
 #include <string.h>
 #include <stdio.h>
@@ -10,7 +9,7 @@ typedef u8 TokenKey;
 
 typedef struct {
 	LineColumn begin, end;
-	string str;
+	str str;
 	TokenKey tok;
 } Token;
 
@@ -26,7 +25,7 @@ TkINVALID = -1,
 
 
 
-TokenKey get_keyword_or_ident(string s) {
+TokenKey get_keyword_or_ident(str s) {
 
 #	define Tok(x) 
 #	define TokKw(x, ss) if(strncmp(s.ptr, #ss, sizeof(#ss) - 1) == 0) { return x; } else
@@ -38,7 +37,7 @@ TokenKey get_keyword_or_ident(string s) {
 }
 
 
-cstring token_to_cstring(TokenKey k) {
+cstr token_to_cstr(TokenKey k) {
 
 	switch(k) {
 #	define Tok(x)       case x: return #x;

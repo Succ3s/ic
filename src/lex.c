@@ -3,7 +3,7 @@
 #include <ctype.h>
 
 
-Lexer lex_build(cstring s) {
+Lexer lex_build(cstr s) {
 	Lexer l = {
 		.line = 1, .column = 0,
 		.str = s
@@ -13,7 +13,7 @@ Lexer lex_build(cstring s) {
 }
 
 Token _lex_build_token(Lexer* newLex, Lexer* oldLex, usize TokenKind) {
-	string s = (string) {
+	str s = (str) {
 		.ptr = oldLex->str,
 		.len = (usize)newLex->str -(usize)oldLex->str
 	};
@@ -38,7 +38,7 @@ case fst:                                              \
 #define _build_token(tok)               _lex_build_token(lex, &oldLex, tok)
 #define _check_null_terminate(ch, expr) if((ch) == '\0') { expr; }
 
-bool  _lex_string(Lexer* lex);
+bool  _lex_str(Lexer* lex);
 Token _lex_ident(Lexer* lex, Lexer oldLex);
 bool  _lex_number(Lexer* lex, char ch1);
 Token _lex_next_w(Lexer* lex);
@@ -105,9 +105,9 @@ Token _lex_next_w(Lexer* lex) {
 		_maybe_double('<', TkLArrow,  '=', TkLArrowEq);
 		_maybe_double('>', TkRArrow,  '=', TkRArrowEq);
 
-		// string
+		// str
 		case '"': {
-			if(_lex_string(lex)) {
+			if(_lex_str(lex)) {
 				return _build_token(TkLitString);
 			}
 			return _build_token(TkINVALID);
@@ -162,7 +162,7 @@ Token _lex_ident(Lexer* lex, Lexer oldLex) {
 	return t;
 }
 
-bool _lex_string(Lexer* lex) {
+bool _lex_str(Lexer* lex) {
 	for(;lex_peek_char(lex, 0) != '"';) {
 		_check_null_terminate(lex_next_char(lex), return false);
 		if(lex_peek_char(lex, 0) == '\\') {

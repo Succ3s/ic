@@ -85,7 +85,7 @@ exprStmt = exprWithBlock | ( exprWithoutBlock, ";" );
 
 11 (???) ::    group
 10 (???) ::    number, ident, string, char, literal
-9  (ltr) ::    ., call, index, .-, .*, .&, .!, exprWithBlock, cast, init
+9  (ltr) ::    ., ->, call, index, .-, .*, .&, .!, exprWithBlock, cast, init
 7  (ltr) ::    *, /, %
 6  (ltr) ::    +, -
 5  (ltr) ::    ==, !=
@@ -121,6 +121,7 @@ infix = expr, "+",     expr                                  (* flags &= ~EXPR_T
 
 	|   expr, "..",     expr                                 (* flags &= ~EXPR_TYPE_INIT *)
 	|   expr, "..<",    expr                                 (* flags &= ~EXPR_TYPE_INIT *)
+	|   expr, "->",     expr                                 (* flags &= ~EXPR_TYPE_INIT *)
 	|   expr, "orelse", expr;                                (* flags &= ~EXPR_TYPE_INIT *)
 postfix = ( expr, ".-"                                    )  (* flags &= ~EXPR_TYPE_INIT *)
 	|     ( expr, ".*"                                    )  (* flags &= ~EXPR_TYPE_INIT *)

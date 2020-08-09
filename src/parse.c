@@ -9,9 +9,9 @@ const usize SIZEOF_ ## var = sizeof(msg);
 ERR_MESSAGE(ERR_UNEXPECTED, "Unexpected token: expected %s, but got %s")
 
 #define MAKE_ERR_UNEXPECTED(EXPECTED, GOT, ...)            \
-cstring expected = token_to_cstring(EXPECTED);             \
-cstring got      = token_to_cstring(GOT);                  \
-cstring str      = allocator_alloc(                        \
+cstr expected = token_to_cstr(EXPECTED);             \
+cstr got      = token_to_cstr(GOT);                  \
+cstr str      = allocator_alloc(                        \
 	p->allocator,                                          \
 	SIZEOF_ERR_UNEXPECTED + strlen(expected) + strlen(got) \
 );                                                         \
@@ -19,7 +19,7 @@ sprintf(str, ERR_UNEXPECTED, expected, got);               \
 parser_push_err(p, (Error) {                               \
 	.lvl = ErrorLevelError,                                \
 	.loc = __VA_ARGS__,                                    \
-	.msg = string_from_cstring(str),                       \
+	.msg = str_from_cstr(str),                       \
 });
 
 AstPackage* _parse_package(Parser* p);
@@ -69,7 +69,7 @@ AstPackage* _parse_package(Parser* p) {
 	}
 	lex_next(p->lex);
 
-	cstring cstr = string_to_cstring(p->allocator, pkg_name.str);
+	cstr cstr = str_to_cstr(p->allocator, pkg_name.str);
 	pkg->name = cstr;
 	return pkg;
 }
@@ -103,19 +103,19 @@ AstItem* _parse_item(Parser* p) {
 			Token nxt = p->lex->curr;
 			switch(nxt.tok) {
 				case TkLitIdent:
-					import->namespace = string_to_cstring(p->allocator, nxt.str);
+					import->namespace = str_to_cstr(p->allocator, nxt.str);
 					break;
 				case TkLitString: // nice error
 
 					parser_push_err(p, (Error) {
 						.lvl = ErrorLevelError,
 						.loc = (Location) { nxt.begin, nxt.end },
-						.msg = string_from_cstring("Missing import name"),
+						.msg = str_from_cstr("Missing import name"),
 					});
 					parser_push_err(p, (Error) {
 						.lvl = ErrorLevelNote,
 						.hideInfo = true,
-						.msg = string_from_cstring("usage: #import name \"path\""),
+						.msg = str_from_cstr("usage: #import name \"path\""),
 					});
 
 
@@ -138,7 +138,7 @@ AstItem* _parse_item(Parser* p) {
 			}
 			lex_next(p->lex);
 
-			cstring path1 = string_to_cstring(p->allocator, path.str);
+			cstr path1 = str_to_cstr(p->allocator, path.str);
 			import->path = path1;
 			return item;
 		}
@@ -171,7 +171,7 @@ AstItem* _parse_item(Parser* p) {
 				item->loc->end = name.end;
 				return item;
 			}
-			t_decl->new_name = string_to_cstring(p->allocator, name.str);
+			t_decl->new_name = str_to_cstr(p->allocator, name.str);
 			lex_next(p->lex);
 
 			// type
@@ -229,7 +229,7 @@ AstType* _parse_type_without_block(Parser* p) {
 				sizeof(AstType) + sizeof(Location)
 			);
 			type->type_kind      = TypeKindNamed;
-			type->type.named    = string_to_cstring(p->allocator, fst.str);
+			type->type.named    = str_to_cstr(p->allocator, fst.str);
 			type->loc           = (Location*) (type + 1);
 			*type->loc          = (Location ) { fst.begin, fst.end };
 			return type;
@@ -440,7 +440,7 @@ AstType* _parse_type_with_block(Parser* p) {
 				EnumKey key = {0};
 				Token tmp = p->lex->curr;
 				if(tmp.tok != TkLitIdent) { break; }
-				key.field = string_to_cstring(p->allocator, tmp.str);
+				key.field = str_to_cstr(p->allocator, tmp.str);
 				lex_next(p->lex);
 
 
@@ -492,7 +492,7 @@ ChunkedList(ProcArguments, 4) _parse_arguments(Parser* p, TokenKey separator) {
 
 		Token tmp = p->lex->curr;
 		if(tmp.tok != TkLitIdent) { break; }
-		arg.name = string_to_cstring(p->allocator, tmp.str);
+		arg.name = str_to_cstr(p->allocator, tmp.str);
 		lex_next(p->lex);
 
 
