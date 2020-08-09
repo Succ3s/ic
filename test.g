@@ -4,11 +4,11 @@
 
 //
 //
-// comptime-ish find
+// comptime-ish
 //
 //
 
-proc find(const f: const T, const arr: []T) -> union{uint} {
+proc test_comptime_ish(const f: const T, const arr: []T) -> union{uint} {
 	#for i in arr {
 		#if i == f {
 			break:find i;
@@ -61,7 +61,7 @@ proc test_null_safety() {
 //
 //
 
-proc test(x: X) -> bool {
+proc test_control_flow(x: X) -> bool {
 	var d: union{int, bool} = true;
 	var res = switch d {
 		x: int if x == 1 { true  }
