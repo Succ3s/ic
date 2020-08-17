@@ -7,29 +7,24 @@
 
 TODO:
 - make sure noNullType rule isn't wrong
-- depency arrow (should it really be an arrow?)
-- (maybe) auto tuples (like go, and odin)
-- (maybe) vector types (like glsl, and hlsl)
+- depency arrow
+- tuples
 - attrs
 	- they will only exist in the ast, no way to query them at runtime
 	- '@' ident '(' ? anything ? ')'
-- labels (break, continue)
 - expression precedence
 - literals
+
 *)
 
-
-ident = ? TODO ?;
-
-file = package, { import }, { item };
-
-package = "#package", ident;
+file = "package", ident ";", { item };
 
 item = proc
-	|  typeDecl
-	|  decl;
+     | typeDecl
+     | decl
+     | ( "import", ident, stringLit, ";" ) 
+     ;
 
-import = "#import", ident, stringLit;
 
 proc = "proc", ident, "(", [argDef, {",", argDef}] ")", [type], ";" | block;
 argDef = ident ":" type;
@@ -38,120 +33,119 @@ decl = "const" | "var", ident, [ ":", type ], [ "=", expr ], ";";
 
 typeDecl = "alias" | "type", ident, (typesWithoutBlock, ";") | (typesWithBlock, [";"]);
 
+
+
+
+
+
 type = typesWithoutBlock | typesWithBlock;
 typesWithoutBlock = ["!"], namedType
-	|                      procType
-	|                      ptrType
-	|                      sliceType
-	|                      arrayType
-	|                      ptrArrayType;
+                  |        procType
+                  |        arrayType
+                  |        sliceType
+                  |        ptrArrayType
+                  |        ptrType
+                  ;
 namedType    = ident;
-procType     = "*", "proc", "(", [argDef, {",", argDef}], ")", [type];)
-ptrType      = "*", type;
-sliceType    = "[", "]", type;
+procType     = "proc", "(", [argDef, {",", argDef}], ")", [type];)
 arrayType    = "[", expr, "]", type;
-ptrArrayType = "[", "*", "]", type;
+sliceType    = "[",       "]", type;
+ptrArrayType = "[", "*",  "]", type;
+ptrType      =      "*",       type;
 
 typesWithBlock = struct
-	|            union
-	|            enum;
+               | union
+               | enum
+               ;
 struct   = "struct", "{", [ argDef, { ",", argDef } ],   "}";
 union    = "union",  "{", [ type, { ",", type } ],       "}";
 enum     = "enum",   "{", [ enumKey, { ",", enumKey } ], "}";
 enumKey  = ident, [ "=", expr ];
 
 
-block = "{", { stmt }, [ expr ], "}";
 
 
 
 
-
+label = ident, ":";
 stmt = ";"
-	|  decl
-	|  for
-	|  exprStmt
-	|  ( "break",    ":", ident, [ expr ], ";" )
-	|  ( "continue", ":", ident, [ expr ], ";" )
-	|  ( "defer", exprStmt                     );
+     |  decl
+     |  ( [label], block         )
+     |  ( [label], for           )
+     |  ( [label], if            )
+     |  ( [label], switch        )
+     |  (             expr,  ";" )
+     |  ( "return",   expr,  ";" )
+     |  ( "defer",    expr,  ";" )
+     |  ( "break",    ident, ";" ) (* label *)
+     |  ( "continue", ident, ";" ) (* label *)
+     ;
 
-for      = "for", [ ident, [ ",", ident ], "in" ], expr, block;
-exprStmt = exprWithBlock | ( exprWithoutBlock, ";" );
+
+block = "{", { stmt }, "}";
+if = "if", expr, block, { "else", "if", expr, block }, [ "else", block ];
+for = "for", [ ident, [ ",", ident ], "in" ], expr, block;
+switch = "switch", expr, "{", { switchCase, [ "if", expr ], block } "}";
+switchCase = "else"
+           | ( ident, ":", type )
+           | ( expr, { ",", expr } )
+           ;
+
 
 
 
 
 (*
 
-11 (???) ::    group
-10 (???) ::    number, ident, string, char, literal
-9  (ltr) ::    ., ->, call, index, .-, .*, .&, .!, exprWithBlock, cast, init
-7  (ltr) ::    *, /, %
-6  (ltr) ::    +, -
-5  (ltr) ::    ==, !=
-4  (ltr) ::    >, <, >=, <=
-3  (ltr) ::    and
-2  (ltr) ::    or
-1  (ltr) ::    orelse, .., ..<
-0  (rtl) ::    =, +=, -=, *=, /=, %=
+9 (???) ::    number, ident, string, char, Tinit, group
+8 (ltr) ::    ., ->, call, index, .-, .*, .&, .!, cast, init
+7 (ltr) ::    *, /, %
+6 (ltr) ::    +, -
+5 (ltr) ::    ==, !=, >, <, >=, <=
+4 (ltr) ::    and
+3 (ltr) ::    or
+2 (ltr) ::    orelse, .., ..<
+1 (rtl) ::    =, +=, -=, *=, /=, %=
 
 *)
 
-expr = exprWithoutBlock | exprWithBlock;
-
-exprWithoutBlock = infix | postfix | literals;
-infix = expr, "+",     expr                                  (* flags &= ~EXPR_TYPE_INIT *)
-	|   expr, "-",     expr                                  (* flags &= ~EXPR_TYPE_INIT *)
-	|   expr, "*",     expr                                  (* flags &= ~EXPR_TYPE_INIT *)
-	|   expr, "/",     expr                                  (* flags &= ~EXPR_TYPE_INIT *)
-	|   expr, "%",     expr                                  (* flags &= ~EXPR_TYPE_INIT *)
-
-	|   expr, ">",      expr                                 (* flags &= ~EXPR_TYPE_INIT *)
-	|   expr, "<",      expr                                 (* flags &= ~EXPR_TYPE_INIT *)
-	|   expr, ">=",     expr                                 (* flags &= ~EXPR_TYPE_INIT *)
-	|   expr, "<=",     expr                                 (* flags &= ~EXPR_TYPE_INIT *)
-	|   expr, "==",     expr                                 (* flags &= ~EXPR_TYPE_INIT *)
-	|   expr, "!=",     expr                                 (* flags &= ~EXPR_TYPE_INIT *)
-
-	|   expr, "or",     expr                                 (* flags &= ~EXPR_TYPE_INIT *)
-	|   expr, "and",    expr                                 (* flags &= ~EXPR_TYPE_INIT *)
+expr = infix | postfix | literals;
 
 
-	|   expr, ".", ident                                     (* flags |= EXPR_TYPE_INIT *)
+infix = ( expr, binop, expr ) (* -TI *)
+      | ( expr, ".", ident )  (* +TI *)
+      ;
+infixop = "+"   | "-"   | "*"  | "/"  | "%"
+        | ">"   | "<"   | ">=" | "<=" | "==" | "!="
+        | ".."  | "..<" | "orelse"
+        | "and" | "or"
+        | "->"
+        ;
 
-	|   expr, "..",     expr                                 (* flags &= ~EXPR_TYPE_INIT *)
-	|   expr, "..<",    expr                                 (* flags &= ~EXPR_TYPE_INIT *)
-	|   expr, "->",     expr                                 (* flags &= ~EXPR_TYPE_INIT *)
-	|   expr, "orelse", expr;                                (* flags &= ~EXPR_TYPE_INIT *)
-postfix = ( expr, ".-"                                    )  (* flags &= ~EXPR_TYPE_INIT *)
-	|     ( expr, ".*"                                    )  (* flags &= ~EXPR_TYPE_INIT *)
-	|     ( expr, ".&"                                    )  (* flags &= ~EXPR_TYPE_INIT *)
-	|     ( expr, ".!"                                    )  (* flags &= ~EXPR_TYPE_INIT *)
-	|     ( expr, ".", "(", type, ")"                     )  (* flags &= ~EXPR_TYPE_INIT *)
-	|     ( expr, "(", [ expr, { ",", expr } ], ")"       )  (* flags |= EXPR_TYPE_INIT *)
-	|     ( expr, "[", expr, "]"                          )  (* flags &= ~EXPR_TYPE_INIT *)
-	|     ( expr, "{", [ initLit, { ",", initLit } ], "}" ); (* only if flags & EXPR_TYPE_INIT, flags &= ~EXPR_TYPE_INIT *)
+postfix = expr, postfixop;
+postfixop = ".-" | ".*" | ".&" | ".!"
+          | ( ".",   "(",  type,  ")"                                     )  (* -TI *)
+          | ( "as", ["("], type, [")"]                                    )  (* -TI *)
+          | ( "(" expr, [ ",", expr ], ")"                                )  (* +TI *)
+          | ( "[" expr "]"                                                )  (* -TI *)
+          | ( "{", [ initLit, { ",", initLit } ], "}"                     )  (* is TI, +TI *)
+          | ( "if", expr, "else", expr                                    )  (* -TI *)
+          | ( "switch", "{", switchExprBranch, ["," switchExprBranch] "}" )  (* -TI *)
+          ;
+
+
+
 initLit = ( "[", expr, "]" ) | expr, "=", expr;
 
-literals = number | char | string | "(" expr ")"             (* flags &= ~EXPR_TYPE_INIT *)
-	| ident                                                  (* flags |= EXPR_TYPE_INIT *)
-	| initTypes                                              (* flags |= EXPR_TYPE_INIT *)
-	| exprWithBlock;                                         (* flags &= ~EXPR_TYPE_INIT *)
+switchExprBranch = switchCase, '=>', expr;
+
+literals = number | char | string | "(" expr ")" (* -TI *)
+	| ident                                      (* +TI *)
+	| initTypes                                  (* +TI *)
+	| exprWithBlock                              (* -TI *)
+	| procExpr                                   (* -TI *)
+	;
+
+procExpr = "proc", "(", [argDef, {",", argDef}], ")", [type], block;
 
 initTypes = sliceType | arrayType | ptrArrayType;
-
-
-exprWithBlock = [ ident, ':' ], block
-	|                           if
-	|                           switch
-	|                           procExpr;
-if = "if" expr, block,
-	{ "else", "if", expr, block },
-	[ "else", block ];
-switch = "switch", expr, "{", {switchBranch} "}";
-switchBranch = switchCase, block;
-switchCase = "else"
-	|        ident ":" type switchIf,
-	|        expr, [switchIf], { ",", expr, [switchIf] };
-switchIf = "if", expr;
-procExpr = "proc", "(", [argDef, {",", argDef}], ")", [type], block;
