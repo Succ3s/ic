@@ -93,13 +93,75 @@ typedef const char* cstr;
 
 u8* alignup(u8* addr, usize align);
 
-#define Buf(T) T*
-
 #define min(x, y) ((x) < (y) ? (x) : (y))
 #define max(x, y) ((x) > (y) ? (x) : (y))
 
 #define assert(x) cwb_assert(x, __LINE__, __FILE__)
 void cwb_assert(bool expr, isize line, cstr file);
+
+
+
+
+
+
+
+
+
+
+// ===========================
+// = Buffer                  =
+// ===========================
+
+#define Buf(T) T*
+
+#define BUF_CAP (8)
+
+typedef struct BufHdr BufHdr;
+struct BufHdr {
+	isize len, cap;
+	u8 data[0];
+};
+
+// #define Buf(T) T*
+#define buf_h(t) ((BufHdr*)(((u8*)(t)) - offsetof(BufHdr, data)))
+#define buf_len(t) ((t) != null ? buf_h((t))->len : 0)
+#define buf_push(t, v) ((t) = buf__push(buf_h((t)), (t), sizeof(*(t)), 1), (t)[buf_h((t))->len++] = (v))
+#define buf_remove(t, index) ((t) != null ? (memmove((t) + index, (t) + index + 1, buf_len((t))-index-1), --buf_h((t))->len) : 0)
+#define buf_dealloc(t) (heap_dealloc((buf_h((t)))))
+
+void* buf__push(BufHdr* hdr, void* arr, isize el_size, isize push_count);
+
+
+
+
+
+
+
+
+
+
+// ===========================
+// = Map                     =
+// ===========================
+
+#define Map(T) T*
+
+typedef struct MapHdr MapHdr;
+struct MapHdr {
+	Buf(u64) keys;
+	BufHdr buf;
+};
+
+#define map_h(t) ((MapHdr*)(((u8*)(t)) - offsetof(MapHdr, buf) - offsetof(BufHdr, data)))
+#define map_push(t, key, v) (t = map__push(map_h((t)), (t), key, sizeof(*(t))), (t)[map_h((t))->buf.len++] = (v))
+#define map_find_index(t, key) ((t) != null ? map__find_index(map_h((t)), key) : -1)
+#define map_remove(t, key) map__remove(map_h((t)), (t), (key), sizeof(*(t)))
+#define map_len(t) buf_len((t))
+
+
+isize map__find_index(MapHdr* hdr, u64 key);
+bool  map__remove(MapHdr* hdr, void* map, u64 key, isize el_size);
+void* map__push(MapHdr* hdr, void* map, u64 key, isize el_size);
 
 
 
@@ -123,38 +185,8 @@ str str_from_cstr(cstr s);
 cstr str_to_cstr(str t);
 cstr cstr_clone(cstr s);
 
-typedef Buf(cstr) StringIntern;
-cstr cstr_intern(StringIntern* h, cstr str);
-
-
-
-
-
-
-
-
-
-
-// ===========================
-// = Buffer                  =
-// ===========================
-
-#define BUF_CAP (8)
-
-typedef struct BufHdr BufHdr;
-struct BufHdr {
-	isize len, cap;
-	u8 data[0];
-};
-
-#define Buf(T) T*
-#define buf_h(t) ((BufHdr*)(((u8*)(t)) - offsetof(BufHdr, data)))
-#define buf_len(t) ((t) != null ? buf_h((t))->len : 0)
-#define buf_push(t, v) ((t) = buf__push(buf_h((t)), (t), sizeof(*(t)), 1), (t)[buf_h((t))->len++] = (v))
-#define buf_remove(t, index) ((t) != null ? (memmove((t) + index, (t) + index + 1, buf_len((t))-index-1), --buf_h((t))->len) : 0)
-#define buf_dealloc(t) (heap_dealloc((buf_h((t)))))
-
-void* buf__push(BufHdr* hdr, void* arr, isize el_size, isize push_count);
+typedef Buf(cstr) StrIntern;
+cstr cstr_intern(StrIntern* h, cstr str);
 
 
 
@@ -175,23 +207,23 @@ typedef struct {} IfExpr;
 typedef struct {} InitLit;
 typedef struct Expr Expr;
 struct Expr {
+	u32 pos;
 	u16 flags;
 	u8 kind;
 	u8 op;
-	u32 pos;
 	union {
 		struct {
 			Expr* l;
 			union {
-				Type* eucast;        // expr '.(' type ')'
-				Type* ecast;         // expr 'as' '('? type ')'?
-				Buf(Expr*) ecall;    // expr '(' [ expr { ',' expr } ] ')'
-				Buf(InitLit*) einit; // expr '{' ... '}'
-				IfExpr* eif;         // expr 'if' expr 'else' expr
-				SwitchExpr* eswitch; // expr 'switch' '{' ... '}'
-				Expr* eindex;        // expr '[' expr ']'
-				Expr* er;            // expr op expr
-				cstr  er_ident;      // expr '.' ident
+				Type*         eucast;   // expr '.(' type ')'
+				Type*         ecast;    // expr 'as' '('? type ')'?
+				Buf(Expr*)    ecall;    // expr '(' [ expr { ',' expr } ] ')'
+				Buf(InitLit*) einit;    // expr '{' ... '}'
+				IfExpr*       eif;      // expr 'if' expr 'else' expr
+				SwitchExpr*   eswitch;  // expr 'switch' '{' ... '}'
+				Expr*         eindex;   // expr '[' expr ']'
+				Expr*         er;       // expr op expr
+				cstr          er_ident; // expr '.' ident
 			};
 		};
 		f64  efloat;
