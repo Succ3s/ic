@@ -1,5 +1,5 @@
-#ifndef G_HEADER_LEX
-#define G_HEADER_LEX
+#ifndef IC_HEADER_LEX
+#define IC_HEADER_LEX
 
 #include "common.h"
 

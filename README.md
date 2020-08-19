@@ -1,3 +1,3 @@
-# The G Programming Language
+# The ic Programming Language
 
 - todo: better README.md
