@@ -97,6 +97,8 @@ switchCase = "else"
 
 (*
 
+FIXME
+
 9 (???) ::    number, ident, string, char, Tinit, group
 8 (ltr) ::    ., ->, call, index, .-, .*, .&, .!, cast, init
 7 (ltr) ::    *, /, %
@@ -109,43 +111,37 @@ switchCase = "else"
 
 *)
 
-expr = infix | postfix | literals;
+expr = prefix | infix | postfix | literals;
 
-
-infix = ( expr, binop, expr ) (* -TI *)
-      | ( expr, ".", ident )  (* +TI *)
+prefix = "-"|"not", expr;
+infix = ( expr, binop, expr )
+      | ( expr, ".", ident  )
       ;
 infixop = "+"   | "-"   | "*"  | "/"  | "%"
         | ">"   | "<"   | ">=" | "<=" | "==" | "!="
         | ".."  | "..<" | "orelse"
         | "and" | "or"
-        | "->"
         ;
 
 postfix = expr, postfixop;
-postfixop = ".-" | ".*" | ".&" | ".!"
-          | ( ".",   "(",  type,  ")"                                     )  (* -TI *)
-          | ( "as", ["("], type, [")"]                                    )  (* -TI *)
-          | ( "(" expr, [ ",", expr ], ")"                                )  (* +TI *)
-          | ( "[" expr "]"                                                )  (* -TI *)
-          | ( "{", [ initLit, { ",", initLit } ], "}"                     )  (* is TI, +TI *)
-          | ( "if", expr, "else", expr                                    )  (* -TI *)
-          | ( "switch", "{", switchExprBranch, ["," switchExprBranch] "}" )  (* -TI *)
+postfixop =   ".*" | ".&"
+          | ( "as?", ident | ("(", ":", type, ")")                        )
+          | ( "as",  ident | ("(", ":", type, ")")                        )
+          | ( "(" expr, [ ",", expr ], ")"                                )
+          | ( "[" expr "]"                                                )  
+          | ( "if", expr, "else", expr                                    )
+          | ( "switch", "{", switchExprBranch, ["," switchExprBranch] "}" )
           ;
 
+switchExprBranch = switchCase, ['if' expr], '=>', expr;
 
-
-initLit = ( "[", expr, "]" ) | expr, "=", expr;
-
-switchExprBranch = switchCase, '=>', expr;
-
-literals = number | char | string | "(" expr ")" (* -TI *)
-	| ident                                      (* +TI *)
-	| initTypes                                  (* +TI *)
-	| exprWithBlock                              (* -TI *)
-	| procExpr                                   (* -TI *)
+literals = number | char | string | "(" expr ")"
+	| procExpr
+	| (ident, [initLit]              )
+  | ( "(", ":", type, ")", initLit )
 	;
 
 procExpr = "proc", "(", [argDef, {",", argDef}], ")", [type], block;
 
-initTypes = sliceType | arrayType | ptrArrayType;
+initLit = "{", [ initField, { ",", initField } ], "}";
+initField = ( "[", expr, "]" ) | expr, "=", expr;

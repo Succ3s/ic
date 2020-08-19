@@ -1,6 +1,6 @@
-#package main
+package main;
 
-#import fmt "std:fmt"
+import fmt "std:fmt";
 
 //
 //
@@ -11,10 +11,10 @@
 proc test_comptime_ish(const f: const T, const arr: []T) -> union{uint} {
 	#for i in arr {
 		#if i == f {
-			break:find i;
+			return i;
 		}
 	}
-	null
+	return null;
 }
 
 
@@ -27,13 +27,12 @@ proc test_comptime_ish(const f: const T, const arr: []T) -> union{uint} {
 // null safety
 //
 //
+//  - ptrs, anyptr    // they are pointers
+//  - cstr            // cstr is a strong alias to *u8
+//  - proc            // proc pointer
+//  - slice, str, any // null if the inner pointer is null
+//  - enum, union     // except @NoNull
 
-// null safety
-	// - ptrs, anyptr    // they are pointers
-	// - cstr            // cstr is a strong alias to *u8
-	// - proc            // proc pointer
-	// - slice, str, any // null if the inner pointer is null
-	// - enum, union     // except @NoNull
 alias Foo struct {
 	x: struct {
 		y: struct { z: !*i32 },
@@ -63,20 +62,20 @@ proc test_null_safety() {
 
 proc test_control_flow(x: X) -> bool {
 	var d: union{int, bool} = true;
-	var res = switch d {
-		x: int if x == 1 { true  }
-		x: bool          { x     }
-		else             { false }
+	var res = d switch {
+		x: int if x == 1 => true,
+		x: bool          => x,
+		else             => false
 	};
 
 	switch 1 {
-		2, 3  { fmt.println("foo") }
-		1..10 { fmt.println("aaa") }
+		2, 3  { fmt.println("foo"); }
+		1..10 { fmt.println("aaa"); }
 	}
 
-	if  x.(bool) != null                 { fmt.println("aaa"); }
-	for i in 0..1                        { fmt.println(i);     }
-	if  true { fmt.println("aaa") } else { fmt.println("bbb"); }
+	if  x.(bool) != null                  { fmt.println("aaa"); }
+	for i in 0..1                         { fmt.println(i);     }
+	if  true { fmt.println("aaa"); } else { fmt.println("bbb"); }
 }
 
 
@@ -86,7 +85,8 @@ proc test_control_flow(x: X) -> bool {
 //
 //
 
-#import t "core:type"
+import t "core:type";
+
 proc print_struct(s: any) {
 	switch t.type_info(s.id) {
 		x: t.Named  {
@@ -102,6 +102,7 @@ proc print_struct(s: any) {
 			print_fields(x);
 			fmt.println("}");
 		}
+		else {}
 	}
 }
 
@@ -131,18 +132,19 @@ type Arith(T: typeid) struct {
 
 
 const i32Arith = Arith(i32) {
-	add: proc(a, b: i32) -> i32 { a + b }
-	sub: proc(a, b: i32) -> i32 { a - b }
-	mul: proc(a, b: i32) -> i32 { a * b }
-	div: proc(a, b: i32) -> i32 { a / b }
+	add: proc(a, b: i32) -> i32 { return a + b; }
+	sub: proc(a, b: i32) -> i32 { return a - b; }
+	mul: proc(a, b: i32) -> i32 { return a * b; }
+	div: proc(a, b: i32) -> i32 { return a / b; }
 };
 
-proc stuff(
-	const arith: Arith(const T: typeid)),
-	a, b: T
-) -> T { arith.add(a, arith.mul(b, b)) }
+proc stuff(const arith: Arith(const T: typeid)),
+           a, b: T
+) -> T {
+	return arith.add(a, arith.mul(b, b));
+}
 
-proc test_trait_ish() { fmt.println(stuff(i32Arith, 2.-, 7)) }
+proc test_trait_ish() { fmt.println(stuff(i32Arith, -2, 7)); }
 
 //
 //
@@ -155,19 +157,4 @@ alias IntAlias int;
 proc test_types() {
 	assert(IntType  != int);
 	assert(IntAlias == int);
-}
-
-//
-//
-// UFCS-ish
-//
-//
-
-
-proc neg(x: $T) -> T where t.is_numeric(T) { x.! }
-
-proc test_ufcs_ish() {
-	var a = 10;
-	a->neg()
-	 ->prinln();
 }

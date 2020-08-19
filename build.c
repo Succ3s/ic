@@ -1,6 +1,8 @@
 #include "src/common.c"
 
 int main() {
-	printf("hello world\n");
+	#ifdef TMAIN
+	return TMAIN();
+	#endif
 	return 0;
 }

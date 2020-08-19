@@ -201,11 +201,33 @@ cstr cstr_intern(StrIntern* h, cstr str);
 // = AST                     =
 // ===========================
 
-typedef struct {} Type;
-typedef struct {} SwitchExpr;
-typedef struct {} IfExpr;
-typedef struct {} InitLit;
+
 typedef struct Expr Expr;
+typedef struct InitList InitList;
+typedef struct IfExpr IfExpr;
+typedef struct SwitchCase SwitchCase;
+typedef struct SwitchExpr SwitchExpr;
+typedef struct Type Type;
+
+
+
+
+enum {
+	EXPR_INFIX, // + - * % > < >= <= == != ..  ..< orelse and or ->
+	EXPR_GET, // .
+	EXPR_POSTFIX, // .- .* .& .!
+	EXPR_UCAST,
+	EXPR_CAST,
+	EXPR_CALL,
+	EXPR_INDEX,
+	EXPR_TYPE_INIT,
+	EXPR_IF,
+	EXPR_SWITCH,
+
+	EXPR_COUNT
+};
+
+
 struct Expr {
 	u32 pos;
 	u16 flags;
@@ -215,15 +237,15 @@ struct Expr {
 		struct {
 			Expr* l;
 			union {
-				Type*         eucast;   // expr '.(' type ')'
-				Type*         ecast;    // expr 'as' '('? type ')'?
-				Buf(Expr*)    ecall;    // expr '(' [ expr { ',' expr } ] ')'
-				Buf(InitLit*) einit;    // expr '{' ... '}'
-				IfExpr*       eif;      // expr 'if' expr 'else' expr
-				SwitchExpr*   eswitch;  // expr 'switch' '{' ... '}'
-				Expr*         eindex;   // expr '[' expr ']'
-				Expr*         er;       // expr op expr
-				cstr          er_ident; // expr '.' ident
+				Type*          eucast;   // expr '.(' type ')'
+				Type*          ecast;    // expr 'as' '('? type ')'?
+				Buf(Expr*)     ecall;    // expr '(' [ expr { ',' expr } ] ')'
+				Buf(InitList*) einit;    // expr '{' ... '}'
+				IfExpr*        eif;      // expr 'if' expr 'else' expr
+				SwitchExpr*    eswitch;  // expr 'switch' '{' ... '}'
+				Expr*          eindex;   // expr '[' expr ']'
+				Expr*          er;       // expr op expr
+				cstr           er_ident; // expr '.' ident
 			};
 		};
 		f64  efloat;
@@ -235,6 +257,71 @@ struct Expr {
 };
 
 
+
+struct InitList {
+	Expr* l;
+	Expr* r;
+	bool index;
+};
+
+struct IfExpr {
+	Expr* l;
+	Expr* r;
+	Expr* cond;
+};
+
+enum {
+	CASE_ELSE,
+	CASE_EXPRL
+};
+
+struct SwitchCase {
+	union {
+		struct { cstr sname; Type* stype; };
+		Buf(Expr*) sexpr;
+	};
+	u32 pos;
+	u32 sname_pos; // 0 = else, 1 = EXPRL
+};
+
+struct SwitchExpr {
+	SwitchCase scase;
+	Expr* sif;
+	Expr* node;
+};
+
+struct Type {
+	isize tsize; // -1 = platform defined
+	isize align;
+	union {
+		Type*                          sptr;    //  *
+		Type*                          sparr;   // [*]
+		Type*                          sslice;  // []
+		struct { Type* t; Expr* len; } sarr;    // [N]
+		Map(Expr*)                     senum;   // enum{...}
+		Map(Type*)                     sstruct; // struct{...}
+		Buf(Type*)                     sunion;  // union{...}
+		cstr                           snamed;  // ident
+	};
+	u8 kind;
+};
+
+#define print_s(T) printf(#T ": %d\n", sizeof(T))
+#define TMAIN fo
+int fo() {
+	print_s(Expr);
+	print_s(InitList);
+	print_s(IfExpr);
+	print_s(SwitchCase);
+	print_s(SwitchExpr);
+	print_s(Type);
+}
+
+
+
+#if __STDC_VERSION__ >= 201112L /* c11 */
+	_Static_assert(EXPR_COUNT <= 256, "Expr tag must fit in an u8");
+#endif
 
 
 
