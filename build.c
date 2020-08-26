@@ -1,4 +1,5 @@
 #include "src/common.c"
+#include "src/lex.h"
 
 int main() {
 	#ifdef TMAIN

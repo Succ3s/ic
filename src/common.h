@@ -7,6 +7,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#include <assert.h>
+
 
 
 // TODO(pgs): format str for each type
@@ -77,7 +79,7 @@ typedef const char* cstr;
 #define COLOR_RESET "\033[0m"
 
 
-#define bytes    (0)
+#define byte     (0)
 #define kilobyte (1024)
 #define megabyte (kilobyte*1024)
 #define gigabyte (megabyte*1024)
@@ -91,14 +93,16 @@ typedef const char* cstr;
 #define heap_dealloc(p)    (free((p)))
 #define heap_realloc(p, s) (realloc((p), (s)))
 
-u8* alignup(u8* addr, usize align);
 
-#define min(x, y) ((x) < (y) ? (x) : (y))
-#define max(x, y) ((x) > (y) ? (x) : (y))
+#ifndef min
+#	define min(x, y) ((x) < (y) ? (x) : (y))
+#endif
 
-#define assert(x) cwb_assert(x, __LINE__, __FILE__)
-void cwb_assert(bool expr, isize line, cstr file);
+#ifndef max
+#	define max(x, y) ((x) > (y) ? (x) : (y))
+#endif
 
+#define sizeof(t) ((isize)sizeof(t))
 
 
 
@@ -122,12 +126,11 @@ struct BufHdr {
 	u8 data[0];
 };
 
-// #define Buf(T) T*
-#define buf_h(t) ((BufHdr*)(((u8*)(t)) - offsetof(BufHdr, data)))
-#define buf_len(t) ((t) != null ? buf_h((t))->len : 0)
-#define buf_push(t, v) ((t) = buf__push(buf_h((t)), (t), sizeof(*(t)), 1), (t)[buf_h((t))->len++] = (v))
-#define buf_remove(t, index) ((t) != null ? (memmove((t) + index, (t) + index + 1, buf_len((t))-index-1), --buf_h((t))->len) : 0)
-#define buf_dealloc(t) (heap_dealloc((buf_h((t)))))
+#define buf_h(t)             ((BufHdr*)(((u8*)(t)) - offsetof(BufHdr, data)))
+#define buf_push(t, v)       ((t) = buf__push(buf_h((t)), (t), sizeof(*(t)), 1), (t)[buf_h((t))->len++] = (v))
+#define buf_len(t)           ((t) ? buf_h((t))->len                         : 0)
+#define buf_remove(t, index) ((t) ? ((t)[(index)] = (t)[--buf_h((t))->len]) : 0)
+#define buf_dealloc(t)       ((t) ? heap_dealloc((buf_h((t))))              : 0)
 
 void* buf__push(BufHdr* hdr, void* arr, isize el_size, isize push_count);
 
@@ -153,8 +156,8 @@ struct MapHdr {
 };
 
 #define map_h(t) ((MapHdr*)(((u8*)(t)) - offsetof(MapHdr, buf) - offsetof(BufHdr, data)))
-#define map_push(t, key, v) (t = map__push(map_h((t)), (t), key, sizeof(*(t))), (t)[map_h((t))->buf.len++] = (v))
-#define map_find_index(t, key) ((t) != null ? map__find_index(map_h((t)), key) : -1)
+#define map_push(t, key, v) (t = map__push(map_h((t)), (t), (key), sizeof(*(t))), (t)[map_h((t))->buf.len++] = (v))
+#define map_find_index(t, key) ((t) != null ? map__find_index(map_h((t)), (key)) : -1)
 #define map_remove(t, key) map__remove(map_h((t)), (t), (key), sizeof(*(t)))
 #define map_len(t) buf_len((t))
 
@@ -177,10 +180,10 @@ void* map__push(MapHdr* hdr, void* map, u64 key, isize el_size);
 // ===========================
 
 typedef struct str str;
-struct str { cstr ptr; usize len; };
+struct str { cstr ptr; isize len; };
 
 
-#define cstr_len(s) (strlen(s))
+#define cstr_len(s) ((isize)strlen(s))
 str str_from_cstr(cstr s);
 cstr str_to_cstr(str t);
 cstr cstr_clone(cstr s);
@@ -306,16 +309,6 @@ struct Type {
 	u8 kind;
 };
 
-#define print_s(T) printf(#T ": %d\n", sizeof(T))
-#define TMAIN fo
-int fo() {
-	print_s(Expr);
-	print_s(InitList);
-	print_s(IfExpr);
-	print_s(SwitchCase);
-	print_s(SwitchExpr);
-	print_s(Type);
-}
 
 
 

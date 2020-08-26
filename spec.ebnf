@@ -65,9 +65,7 @@ enumKey  = ident, [ "=", expr ];
 
 
 
-
-
-label = ident, ":";
+label = ":", ident;
 stmt = ";"
      |  decl
      |  ( [label], block         )
@@ -99,15 +97,16 @@ switchCase = "else"
 
 FIXME
 
-9 (???) ::    number, ident, string, char, Tinit, group
-8 (ltr) ::    ., ->, call, index, .-, .*, .&, .!, cast, init
-7 (ltr) ::    *, /, %
-6 (ltr) ::    +, -
-5 (ltr) ::    ==, !=, >, <, >=, <=
-4 (ltr) ::    and
-3 (ltr) ::    or
-2 (ltr) ::    orelse, .., ..<
-1 (rtl) ::    =, +=, -=, *=, /=, %=
+9 (???) ::  number, ident, string, char, Tinit, group
+8 (ltr) ::  ., ->, call, index, .*, .&, cast, init
+8 (rtl) ::  -, not
+7 (ltr) ::  *, /, %
+6 (ltr) ::  +, -
+5 (ltr) ::  ==, !=, >, <, >=, <=
+4 (ltr) ::  and
+3 (ltr) ::  or
+2 (ltr) ::  orelse, .., ..<
+1 (rtl) ::  =, +=, -=, *=, /=, %=
 
 *)
 
@@ -125,8 +124,8 @@ infixop = "+"   | "-"   | "*"  | "/"  | "%"
 
 postfix = expr, postfixop;
 postfixop =   ".*" | ".&"
-          | ( "as?", ident | ("(", ":", type, ")")                        )
-          | ( "as",  ident | ("(", ":", type, ")")                        )
+          | ( ".", "(", ident | (":", type), ")"                          )
+          | ( "as", ident | ("(", ":", type, ")")                         )
           | ( "(" expr, [ ",", expr ], ")"                                )
           | ( "[" expr "]"                                                )  
           | ( "if", expr, "else", expr                                    )
