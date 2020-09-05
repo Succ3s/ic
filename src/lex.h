@@ -20,9 +20,9 @@ enum {
 	TK_DIV_SET,     // /=
 	TK_MOD_EQ,      // %=
 	TK_EQ,          // ==
+	TK_NE,          // !=
 	TK_LE,          // <=
 	TK_GE,          // >=
-	TK_BANG_EQ,     // !=
 
 	TK_IDENT,
 	TK_INT,
@@ -66,57 +66,11 @@ enum {
 	TK_UNION
 };
 
-typedef i32 Pos;
-
-typedef struct Src Src;
-struct Src {
-	cstr path;
-
-	cstr stream;
-
-	i32  size;
-	i32  start;
-	i32  eol;
-};
-
-typedef struct Srcs Srcs;
-struct Srcs {
-	Buf(Src) list;
-	Pos end;
-};
-
-isize srcs_add(Srcs* srcs, cstr stream, cstr path) {
-	isize len = cstr_len(stream);
-	cstr dup = cstr_clone(stream);
-	Src src = (Src) {
-		.path = path,
-		.stream = dup,
-		.size = len,
-		.start = srcs->end
-	};
-	srcs->end += src.size;
-
-	buf_push(srcs->list, src);
-	return buf_len(srcs->list)-1;
-}
-
-isize srcs_find(Srcs* srcs, Pos pos) {
-	isize blen = buf_len(srcs->list);
-	for(isize i = 0; i < blen; i++) {
-		i32 start = srcs->list[i].start;
-		i32 end = start + srcs->list[i].size;
-
-		if(pos >= start && pos < end) {
-			return i;
-		}
-	}
-	return -1;
-}
 
 typedef struct Token Token;
 struct Token {
 	u8 kind;
-	u32 pos;
+	Pos pos;
 	union {
 		cstr tstr;
 		f64  tfloat;
@@ -128,26 +82,68 @@ struct Token {
 
 typedef struct Lexer Lexer;
 struct Lexer {
-	cstr data;
+	i32 start;
+	cstr begin, cursor;
 	i64 line;
 	Token last;
 };
 
-Lexer lex_init(cstr d) {
-	Lexer l = (Lexer) {
-		.data = d,
-		.line = 1,
-	};
+Lexer lex_init(Source* d) {
+	Lexer l = {0};
+	l.line = 1;
+	l.start = d->start;
+	l.begin = l.cursor = d->stream;
 
-	// lex_next_char(&l);
+	// lex_next(&l);
 
 	return l;
 }
 
-char lex_next_char(Lexer* lexer) {
-	char nxt = *(++lexer->data);
-	lexer->line += nxt == '\n';
-	return nxt;
+Pos calc_pos(Lexer* l, cstr c) {
+	return l->start + c - l->begin;
+}
+
+Token make_token(Lexer* l, cstr tb, Token t) {
+	t.pos = calc_pos(l, tb);
+	l->last = t; 
+	return t;
+}
+
+Token lex_next(Lexer* lp) {
+	if(!*lp->cursor) { return (Token) { .pos = -1 }; }
+
+#	define peek() (*(lp->cursor))
+#	define next() (*lp->cursor++)
+
+
+	/* LABEL */repeat:;
+	lp->cursor += *lp->cursor == ' ';
+	cstr init = lp->cursor;
+	char nxt = next();
+	switch(nxt) {
+		case '\n': lp->line++;
+		case ' ':  goto repeat;
+		case '.': {
+			u8 kind = 0;
+			char p = peek();
+			switch(p) {
+				case '*': kind = TK_DEREF; break;
+				case '&': kind = TK_REF; break;
+				case '.': kind = (next(), peek() == '<') ? TK_EXRANGE : TK_IRANGE; break;
+			}
+			if(kind != 0) {
+				next();
+				return make_token(lp, init, (Token) { .kind = kind });
+			}
+			return make_token(lp, init, (Token) { .kind = '.' });
+			break;
+		}
+	default:
+		return make_token(lp, init, (Token) { .kind = nxt });
+	}
+
+#	undef peek
+#	undef next
 }
 
 #endif

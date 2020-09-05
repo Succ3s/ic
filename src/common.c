@@ -143,3 +143,81 @@ cstr cstr_intern(StrIntern* h, cstr s) {
 
 	return st;
 }
+
+
+
+
+
+
+
+
+
+
+// ===========================
+// = Sources                 =
+// ===========================
+
+isize sources_add(Sources* srcs, cstr stream, cstr path) {
+	isize len = cstr_len(stream);
+	cstr dup = cstr_clone(stream);
+	Source src = (Source) {
+		.path = path,
+		.stream = dup,
+		.size = len,
+		.start = srcs->end
+	};
+	srcs->end += src.size;
+	int i = 0;
+	for(;*dup++;) {
+		i++;
+		if(*dup == '\n') { break; }
+	}
+	src.eol = i;
+
+	buf_push(srcs->list, src);
+	return buf_len(srcs->list)-1;
+}
+
+isize sources_find(Sources* srcs, Pos pos) {
+	isize blen = buf_len(srcs->list);
+	for(isize i = 0; i < blen; i++) {
+		i32 start = srcs->list[i].start;
+		i32 end = start + srcs->list[i].size;
+
+		if(pos >= start && pos < end) {
+			return i;
+		}
+	}
+	return -1;
+}
+
+
+
+// TODO(pgs): try to optimize
+Position sources_position(Sources* srcs, Pos pos) {
+	Position p = { .line = 1, .column = -1, 0};
+	isize idx = sources_find(srcs, pos);
+	if(idx == -1) { return p; }
+
+	Source src = srcs->list[idx];
+	p.path = src.path;
+
+	i32 inp = pos - src.start;
+
+	if(inp <= src.eol) {
+		p.column = inp;
+		return p;
+	}
+
+	for(cstr i = src.stream + inp; *i-- != '\n';) {
+		p.column++;
+	}
+
+	p.line++;
+	for(cstr i = src.stream + inp; i > src.stream + src.eol; i--) {
+		if(*i == '\n') { p.line++; }
+	}
+
+	
+	return p;
+}

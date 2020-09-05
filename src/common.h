@@ -201,6 +201,42 @@ cstr cstr_intern(StrIntern* h, cstr str);
 
 
 // ===========================
+// = Sources                 =
+// ===========================
+
+typedef struct Position Position;
+struct Position {
+	i32 line, column;
+	cstr path;
+};
+typedef i32 Pos;
+
+typedef struct Source Source;
+struct Source {
+	cstr path, stream;
+	i32  size, start, eol;
+};
+
+typedef struct Sources Sources;
+struct Sources {
+	Buf(Source) list;
+	Pos end;
+};
+
+isize sources_add(Sources* srcs, cstr stream, cstr path);
+isize sources_find(Sources* srcs, Pos pos);
+Position sources_position(Sources* srcs, Pos p);
+
+
+
+
+
+
+
+
+
+
+// ===========================
 // = AST                     =
 // ===========================
 
