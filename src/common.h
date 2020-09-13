@@ -10,10 +10,16 @@
 #include <assert.h>
 
 
-
 // TODO(pgs): format str for each type
-// TODO(pgs): lexer:  interning identifiers
 // TODO(pgs): parser: rewrite to generate ir
+// TODO(pgs): depend less on the stdlib
+// -- assert is easy to replace
+// -- stdio is harder, but I'll need to write an api ove the OS's filesystem, the only problem will be formating, but sprintf go brrrrrr
+// -- string is used in many places, but the functions present there are easy to write
+// -- stdlib is only included for the heap allocator
+// -- -- heap allocations will be replaced by arenas using virtual memory or chunked allocations through the OS's native interface
+// -- stddef needed for ptrdiff_t and size_t, could be replaced by manual checks
+// -- stdint could be replaced by manual checks
 
 
 // ===========================
@@ -147,6 +153,9 @@ void* buf__push(BufHdr* hdr, void* arr, isize el_size, isize push_count);
 // = Map                     =
 // ===========================
 
+
+// TODO(pgs): this is not a good implementation, should redo it someday
+
 #define Map(T) T*
 
 typedef struct MapHdr MapHdr;
@@ -188,7 +197,7 @@ str str_from_cstr(cstr s);
 cstr str_to_cstr(str t);
 cstr cstr_clone(cstr s);
 
-typedef Buf(cstr) StrIntern;
+typedef Buf(char*) StrIntern;
 cstr cstr_intern(StrIntern* h, cstr str);
 
 

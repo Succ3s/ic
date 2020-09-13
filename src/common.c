@@ -17,7 +17,7 @@ void* buf__push(BufHdr* hdr, void* arr, isize el_size, isize push_count) {
 	isize len = hdr->len, cap = hdr->cap;
 	if(len + push_count > cap) {
 		isize ncap = max(cap * 2, cap + push_count);
-		hdr = heap_realloc(hdr, ncap*el_size);
+		hdr = heap_realloc(hdr, sizeof(BufHdr) + ncap*el_size);
 		hdr->cap = ncap;
 	}
 	return hdr->data;
@@ -138,7 +138,8 @@ cstr cstr_intern(StrIntern* h, cstr s) {
 	// if not found, intern string
 	if(st == null) {
 		st = cstr_clone(s);
-		buf_push(*h, st);
+		buf_push(hh, (char*)st);
+		*h = hh;
 	}
 
 	return st;
@@ -193,7 +194,7 @@ isize sources_find(Sources* srcs, Pos pos) {
 
 
 
-// TODO(pgs): try to optimize
+// TODO(pgs): I think this is slow, *but* it's only used when printing errors, try to optimize
 Position sources_position(Sources* srcs, Pos pos) {
 	Position p = { .line = 1, .column = -1, 0};
 	isize idx = sources_find(srcs, pos);
