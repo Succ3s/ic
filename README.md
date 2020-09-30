@@ -1,3 +1,3 @@
-# The ic Programming Language
+# The Titania Programming Language
 
 - todo: better README.md

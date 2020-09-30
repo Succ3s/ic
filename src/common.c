@@ -230,7 +230,7 @@ Position sources_position(Sources* srcs, Pos pos) {
 #define TMAIN srcs
 int srcs(int argc, cstr* argv) {
 	Sources src = {0};
-	isize idx0 = sources_add(&src, "\n\n foo bar\n", "build.ic");
+	isize idx0 = sources_add(&src, "\n\n foo bar\n", "build.ttn");
 
 	Pos p = 4;
 

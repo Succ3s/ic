@@ -1,5 +1,5 @@
-#ifndef IC_HEADER_COMMON
-#define IC_HEADER_COMMON
+#ifndef TTN_HEADER_COMMON
+#define TTN_HEADER_COMMON
 
 
 #include <stdint.h>

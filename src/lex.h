@@ -1,5 +1,5 @@
-#ifndef IC_HEADER_LEX
-#define IC_HEADER_LEX
+#ifndef TTN_HEADER_LEX
+#define TTN_HEADER_LEX
 
 #include "common.h"
 
@@ -143,7 +143,7 @@ Token lex_next(Lexer* lp);
 #if 0
 int test_lexer(int argc, cstr* argv) {
 	Sources s = {0};
-	isize idx = sources_add(&s, "10 _ 1_0 0x_10 \"Ffo\\too\" 10.4e-2 foobar if foo_b foo3231 'a' 'b '\\t' .. .& + = += != !", "build.ic");
+	isize idx = sources_add(&s, "10 _ 1_0 0x_10 \"Ffo\\too\" 10.4e-2 foobar if foo_b foo3231 'a' 'b '\\t' .. .& + = += != !", "build.ttn");
 	Lexer l = lex_init(&s.list[idx]);
 	Token tk = lex_next(&l);
 	for(;tk.kind != 0;) {
