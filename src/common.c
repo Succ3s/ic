@@ -159,33 +159,37 @@ cstr cstr_intern(StrIntern* h, cstr s) {
 // ===========================
 
 isize sources_add(Sources* srcs, cstr stream, cstr path) {
-	isize len = cstr_len(stream);
+	// base can't be 0
+	srcs->base += (srcs->base == 0);
+
 	cstr dup = cstr_clone(stream);
 	Source src = (Source) {
 		.path = path,
 		.stream = dup,
-		.size = len,
-		.start = srcs->end
+		.size = cstr_len(stream),
+		.base = srcs->base
 	};
-	srcs->end += src.size;
-	int i = 0;
-	for(;*dup++;) {
-		i++;
+
+	srcs->base += src.size;
+
+	for(;*dup; dup++) {
 		if(*dup == '\n') { break; }
+		src.eol++;
 	}
-	src.eol = i;
 
 	buf_push(srcs->list, src);
 	return buf_len(srcs->list)-1;
 }
 
+
+// NOTE(pgs): I think this is slow, *but* most packages have less than 10 files, so I think this is fine
 isize sources_find(Sources* srcs, Pos pos) {
 	isize blen = buf_len(srcs->list);
 	for(isize i = 0; i < blen; i++) {
-		i32 start = srcs->list[i].start;
-		i32 end = start + srcs->list[i].size;
+		i32 base = srcs->list[i].base;
+		i32 end = base + srcs->list[i].size;
 
-		if(pos >= start && pos < end) {
+		if(pos >= base && pos < end) {
 			return i;
 		}
 	}
@@ -193,8 +197,7 @@ isize sources_find(Sources* srcs, Pos pos) {
 }
 
 
-
-// TODO(pgs): I think this is slow, *but* it's only used when printing errors, try to optimize
+// NOTE(pgs): I think this is slow, *but* it's only used when printing errors, should try to optimize
 Position sources_position(Sources* srcs, Pos pos) {
 	Position p = { .line = 1, .column = -1, 0};
 	isize idx = sources_find(srcs, pos);
@@ -203,7 +206,7 @@ Position sources_position(Sources* srcs, Pos pos) {
 	Source src = srcs->list[idx];
 	p.path = src.path;
 
-	i32 inp = pos - src.start;
+	i32 inp = pos - src.base;
 
 	if(inp <= src.eol) {
 		p.column = inp;
@@ -222,3 +225,23 @@ Position sources_position(Sources* srcs, Pos pos) {
 	
 	return p;
 }
+
+#if 0
+#define TMAIN srcs
+int srcs(int argc, cstr* argv) {
+	Sources src = {0};
+	isize idx0 = sources_add(&src, "\n\n foo bar\n", "build.ic");
+
+	Pos p = 4;
+
+	isize idx = sources_find(&src, p);
+	assert(idx0 == idx);
+
+	char ch = src.list[idx].stream[p-1];
+	assert(ch == 'f');
+	printf("'%c'\n", ch);
+
+	Position pos = sources_position(&src, p);
+	printf("{ line = %d, column = %d, path = %s }\n", pos.line, pos.column, pos.path);
+}
+#endif

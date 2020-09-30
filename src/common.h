@@ -14,7 +14,7 @@
 // TODO(pgs): parser: rewrite to generate ir
 // TODO(pgs): depend less on the stdlib
 // -- assert is easy to replace
-// -- stdio is harder, but I'll need to write an api ove the OS's filesystem, the only problem will be formating, but sprintf go brrrrrr
+// -- stdio is harder, but I'll need to write an api over the OS's filesystem, the only problem will be formating, but sprintf go brrrrrr
 // -- string is used in many places, but the functions present there are easy to write
 // -- stdlib is only included for the heap allocator
 // -- -- heap allocations will be replaced by arenas using virtual memory or chunked allocations through the OS's native interface
@@ -62,6 +62,8 @@ typedef const char* cstr;
 // ===========================
 // = Helpers                 =
 // ===========================
+
+#define internal static
 
 
 #define BG_BLACK    "\033[40m"
@@ -223,13 +225,14 @@ typedef i32 Pos;
 typedef struct Source Source;
 struct Source {
 	cstr path, stream;
-	i32  size, start, eol;
+	i32  size, eol;
+	Pos base;
 };
 
 typedef struct Sources Sources;
 struct Sources {
 	Buf(Source) list;
-	Pos end;
+	Pos base;
 };
 
 isize sources_add(Sources* srcs, cstr stream, cstr path);

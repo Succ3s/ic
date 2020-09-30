@@ -1,93 +1,93 @@
 (*
 
 [] = optional
-{} = one or more
+{} = zero or more
 
 
 
 TODO:
-- make sure noNullType rule isn't wrong
 - depency arrow
 - tuples
 - attrs
-	- they will only exist in the ast, no way to query them at runtime
+	- no way to query them at runtime
 	- '@' ident '(' ? anything ? ')'
 - expression precedence
 - literals
 
 *)
 
-file = "package", ident ";", { item };
+file = "package" ident ";" { item };
 
 item = proc
-     | typeDecl
-     | decl
-     | ( "import", ident, stringLit, ";" ) 
+     | type_def
+     | var
+     | const
+     | extern
+     | ( "import" ident string ";" ) 
      ;
 
 
-proc = "proc", ident, "(", [argDef, {",", argDef}] ")", [type], ";" | block;
-argDef = ident ":" type;
+proc = "proc" ident "(" [ proc_arg { "," proc_arg } ] ")" [type] block;
+proc_arg = ident ":" type;
 
-decl = "const" | "var", ident, [ ":", type ], [ "=", expr ], ";";
-
-typeDecl = "alias" | "type", ident, (typesWithoutBlock, ";") | (typesWithBlock, [";"]);
+type_def = ("alias" | "type") ident "=" type ";";
 
 
+var = "var" ident ( ":" type ["=" expr] | "=" expr ) ";";
+(* expr must be present on consts *)
+const = "const" ident [":" type] "=" expr ";";
 
+extern = "extern" ( extern_v, extern_p, extern_blk );
 
-
-
-type = typesWithoutBlock | typesWithBlock;
-typesWithoutBlock = ["!"], namedType
-                  |        procType
-                  |        arrayType
-                  |        sliceType
-                  |        ptrArrayType
-                  |        ptrType
-                  ;
-namedType    = ident;
-procType     = "proc", "(", [argDef, {",", argDef}], ")", [type];)
-arrayType    = "[", expr, "]", type;
-sliceType    = "[",       "]", type;
-ptrArrayType = "[", "*",  "]", type;
-ptrType      =      "*",       type;
-
-typesWithBlock = struct
-               | union
-               | enum
-               ;
-struct   = "struct", "{", [ argDef, { ",", argDef } ],   "}";
-union    = "union",  "{", [ type, { ",", type } ],       "}";
-enum     = "enum",   "{", [ enumKey, { ",", enumKey } ], "}";
-enumKey  = ident, [ "=", expr ];
+extern_v = "var" ident ":" type ";";
+extern_p = "proc" ident "(" [ proc_arg { "," proc_arg } ] ")" [type] ";";
+extern_blk = "{" { extern_v | extern_p } "}";
 
 
 
 
-label = ":", ident;
+
+
+
+
+type = type_noblk | type_blk;
+type_noblk = ident | proc_t | array_t | slice_t | ptr_t;
+proc_t     = "proc" "(" [ proc_arg { "," proc_arg } ] ")" [type];
+array_t    = "[" expr "]" type;
+slice_t    = "["      "]" type;
+ptr_t      = "*" type;
+
+type_blk = "struct" "{" [ struct_field { ";" struct_field } ] "}"
+         | "union"  "{" [ type         { "," type         } ] "}"
+         | "enum"   "{" [ enum_key     { "," enum_key     } ] "}"
+         ;
+struct_field = ident { "," ident } ":" type;
+enum_key  = ident [ "=" expr ];
+
+
+
+
+label = ":" ident;
 stmt = ";"
-     |  decl
-     |  ( [label], block         )
-     |  ( [label], for           )
-     |  ( [label], if            )
-     |  ( [label], switch        )
-     |  (             expr,  ";" )
-     |  ( "return",   expr,  ";" )
-     |  ( "defer",    expr,  ";" )
-     |  ( "break",    ident, ";" ) (* label *)
-     |  ( "continue", ident, ";" ) (* label *)
+     | var
+     | const
+     | [label] ( block | for | if | switch )
+     | "defer"    stmt (* only blocks and expr_s allowed *)
+     | "continue" ident  ";" (* label *)
+     | "break"    ident  ";" (* label *)
+     | "return"   expr   ";"
+     |            expr_s ";"
      ;
 
+expr_s = expr { ("="|"+="|"-="|"*="|"/="|"%=") expr }; (* a = b = 10 *)
 
-block = "{", { stmt }, "}";
-if = "if", expr, block, { "else", "if", expr, block }, [ "else", block ];
-for = "for", [ ident, [ ",", ident ], "in" ], expr, block;
-switch = "switch", expr, "{", { switchCase, [ "if", expr ], block } "}";
-switchCase = "else"
-           | ( ident, ":", type )
-           | ( expr, { ",", expr } )
-           ;
+block = "{" { stmt } "}";
+if = "if" expr block { "else" "if" expr block } [ "else" block ];
+for = "for" for_in block;
+for_in = expr (* continue if lvalue *) [ [ "," ident ] "in" expr ];
+
+switch = "switch" expr "{" { switch_case [ "if" expr ] block } "}";
+switch_case = "else" | expr "," expr;
 
 
 
@@ -97,50 +97,35 @@ switchCase = "else"
 
 FIXME
 
-9 (???) ::  number, ident, string, char, Tinit, group
-8 (ltr) ::  ., ->, call, index, .*, .&, cast, init
-8 (rtl) ::  -, not
+9 (???) ::  number, ident, string, char, group, init, typeof
+8 (ltr) ::  ., call, index, .*
+8 (rtl) ::  -, not, &, cast
 7 (ltr) ::  *, /, %
 6 (ltr) ::  +, -
 5 (ltr) ::  ==, !=, >, <, >=, <=
 4 (ltr) ::  and
 3 (ltr) ::  or
-2 (ltr) ::  orelse, .., ..<
-1 (rtl) ::  =, +=, -=, *=, /=, %=
+2 (ltr) ::  orelse, .., ..<, if, switch
 
 *)
 
-expr = prefix | infix | postfix | literals;
+expr = orelse;
+orelse = or { ("orelse"|"if" expr "else"|"switch" switch_eblk|".."|"..<") or };
+or = and { "or" and };
+and = cmp { "and" cmp };
+cmp = add { ("=="|"!="|">"|"<"|">="|"<=") add };
+add = mul { ("+"|"-") mul };
+mul = unop { ("*"|"/"|"%") unop };
+unop = ("-"|"not"|"&"|"(:" type ")") unop | get;
+get = lit { "." ident | "(" [ expr { "," expr } ] ")" | "[" expr "]" | ".*" };
 
-prefix = "-"|"not", expr;
-infix = ( expr, binop, expr )
-      | ( expr, ".", ident  )
-      ;
-infixop = "+"   | "-"   | "*"  | "/"  | "%"
-        | ">"   | "<"   | ">=" | "<=" | "==" | "!="
-        | ".."  | "..<" | "orelse"
-        | "and" | "or"
-        ;
+lit = number | char | string | "(" expr ")" | proc | init
+    | ident [ [ "." ident ] init ]
+    | "typeof" ( "(" expr ")" | "(:" type ")" );
 
-postfix = expr, postfixop;
-postfixop =   ".*" | ".&"
-          | ( ".", "(", ident | (":", type), ")"                          )
-          | ( "as", ident | ("(", ":", type, ")")                         )
-          | ( "(" expr, [ ",", expr ], ")"                                )
-          | ( "[" expr "]"                                                )  
-          | ( "if", expr, "else", expr                                    )
-          | ( "switch", "{", switchExprBranch, ["," switchExprBranch] "}" )
-          ;
 
-switchExprBranch = switchCase, ['if' expr], '=>', expr;
+init = "{", [ initf { "," initf } ] "}";
+initf = ("[" expr "]" | expr) "=" expr;
 
-literals = number | char | string | "(" expr ")"
-	| procExpr
-	| (ident, [initLit]              )
-  | ( "(", ":", type, ")", initLit )
-	;
-
-procExpr = "proc", "(", [argDef, {",", argDef}], ")", [type], block;
-
-initLit = "{", [ initField, { ",", initField } ], "}";
-initField = ( "[", expr, "]" ) | expr, "=", expr;
+switch_eblk = "{" [ switch_eblk1 { "," switch_eblk1 }] "}";
+switch_eblk1 = switch_case [ "if" expr ] "=>" expr;

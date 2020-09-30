@@ -34,7 +34,7 @@ enum {
 };
 
 
-cstr TOKEN_TO_STRING[] = {
+internal const cstr TOKEN_TO_STRING[] = {
 	['_']           = "_",
 	[':']           = ":",
 	[';']           = ";",
@@ -75,19 +75,6 @@ cstr TOKEN_TO_STRING[] = {
 
 	[TK_INVALID]    = "INVALID",
 };
-
-const i8 CHAR_TO_NUM[] = {
-	['0'] = 0,  ['1'] = 1,  ['2'] = 2,  ['3'] = 3,
-	['4'] = 4,  ['5'] = 5,  ['6'] = 6,  ['7'] = 7,
-	['8'] = 8,  ['9'] = 9,  ['a'] = 10, ['b'] = 11,
-	['c'] = 12, ['d'] = 13, ['e'] = 14, ['f'] = 15,
-	['A'] = 10, ['B'] = 11, ['C'] = 12, ['D'] = 13,
-	['E'] = 14, ['F'] = 15,
-};
-
-#define is_number(ch) ((ch) >= '0' & (ch) <= '9')
-#define is_hex_number(ch) (is_number((ch)) || (ch) >= 'a' & (ch) <= 'f' || (ch) >= 'A' & (ch) <= 'F')
-#define is_alphanum(ch)   (is_number((ch)) || (ch) >= 'a' & (ch) <= 'z' || (ch) >= 'A' & (ch) <= 'Z')
 
 cstr parse_number(cstr* inout_stream, i8 base, char* buf, i32 buf_size, i32* inout_len);
 
@@ -151,13 +138,7 @@ bool is_keyword(cstr interned);
 
 Lexer lex_init(Source* d);
 
-Pos calc_pos(Lexer* l, cstr c);
-
-Token make_token(Lexer* l, cstr tb, Token t);
-
 Token lex_next(Lexer* lp);
-
-
 
 #if 0
 int test_lexer(int argc, cstr* argv) {
@@ -169,28 +150,28 @@ int test_lexer(int argc, cstr* argv) {
 		cstr ss = TOKEN_TO_STRING[tk.kind];
 		#define PRINTT "Knd: %10s, Pos: %d"
 		switch(tk.kind) {
-							 // TODO(pgs): print utf8
-			case TK_CHAR:
-				printf(PRINTT ", Chr: '%c' \n", ss, tk.pos, tk.tchar);
-				break;
-			case TK_STRING:
-				printf(PRINTT ", Str: '%s' \n", ss, tk.pos, tk.tstr);
-				break;
-			case TK_IDENT:
-				printf(PRINTT ", Idn: '%s', Kw: %d \n", ss, tk.pos, tk.tident, is_keyword(tk.tident));
-				break;
-			case TK_FLOAT:
-				printf(PRINTT ", Flt: '%lf'\n", ss, tk.pos, tk.tfloat);
-				break;
-			case TK_INT:
-				printf(PRINTT ", Unt: '%li'\n", ss, tk.pos, tk.tuint);
-				break;
-			case TK_INVALID:
-				printf(PRINTT ", Inv: '%s' \n", ss, tk.pos, tk.tinvalid);
-				break;
-			default:
-				printf(PRINTT "\n", ss, tk.pos);
-				break;
+		// TODO(pgs): print utf8
+		case TK_CHAR:
+			printf(PRINTT ", Chr: '%c' \n", ss, tk.pos, tk.tchar);
+			break;
+		case TK_STRING:
+			printf(PRINTT ", Str: '%s' \n", ss, tk.pos, tk.tstr);
+			break;
+		case TK_IDENT:
+			printf(PRINTT ", Idn: '%s', Kw: %d \n", ss, tk.pos, tk.tident, is_keyword(tk.tident));
+			break;
+		case TK_FLOAT:
+			printf(PRINTT ", Flt: '%lf'\n", ss, tk.pos, tk.tfloat);
+			break;
+		case TK_INT:
+			printf(PRINTT ", Unt: '%li'\n", ss, tk.pos, tk.tuint);
+			break;
+		case TK_INVALID:
+			printf(PRINTT ", Inv: '%s' \n", ss, tk.pos, tk.tinvalid);
+			break;
+		default:
+			printf(PRINTT "\n", ss, tk.pos);
+			break;
 		}
 
 		tk = lex_next(&l);
