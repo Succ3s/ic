@@ -15,7 +15,7 @@ internal const i8 CHAR_TO_NUM[] = {
 	['E'] = 14, ['F'] = 15,
 };
 
-cstr parse_number(cstr* inout_stream, i8 base, char* buf, i32 buf_size, i32* inout_len) {
+internal cstr parse_number(cstr* inout_stream, i8 base, char* buf, i32 buf_size, i32* inout_len) {
 	#define push(x) (len > buf_size ? printf("BUFFER OVERFLOW\n") : (buf[len++] = (x)))
 	#define SAVE *inout_stream = stream; *inout_len = len;
 
@@ -50,21 +50,12 @@ cstr parse_number(cstr* inout_stream, i8 base, char* buf, i32 buf_size, i32* ino
 }
 
 
-// X-macros ahead
-
-int init_keywords(Lexer* l) {
-#	define o(name) t ## name = cstr_intern(&l->intern, # name);
+internal Token get_keyword(cstr ident) {
+	if(0) {}
+#	define o(name) else if(strcmp(ident, #name) == 0) { return TK_ ## name; }
 	KEYWORDS
 #	undef o
-	return 0;
-}
-
-bool is_keyword(cstr interned) {
-	return
-#	define o(name) t ## name == interned ||
-	KEYWORDS
-#	undef o
-	false;
+	return TK_INVALID;
 }
 
 
@@ -73,13 +64,11 @@ bool is_keyword(cstr interned) {
 
 
 
-Lexer lex_init(Source* d) {
+Lexer lex(Source* d) {
 	Lexer l = {0};
 	l.line = 1;
 	l.start = d->base;
 	l.begin = l.cursor = d->stream;
-
-	init_keywords(&l);
 
 	return l;
 }
@@ -90,29 +79,28 @@ internal Pos calc_pos(Lexer* l, cstr c) {
 }
 
 internal Token make_token(Lexer* l, cstr tb, Token t) {
-	t.pos = calc_pos(l, tb);
-	l->last = t; 
+	l->pos = calc_pos(l, tb);
+	l->tok = t;
 	return t;
 }
 
 
 
-Token lex_next(Lexer* lp) {
-	if(!*lp->cursor) { return (Token) { .pos = -1 }; }
+void advance(Lexer* lp) {
+	if(!lp && !*lp->cursor) { return; }
 
 #	define peek() (*(lp->cursor))
 #	define peek1() (*(lp->cursor+1))
 #	define next() (*lp->cursor++)
-#	define mk_token(Kind) (make_token(lp, init, (Token) { .kind = (Kind) }))
-#	define mk_invalid(msg) (make_token(lp, init,
-		(Token) { .kind = TK_INVALID, .tinvalid = (msg) }))
+#	define mk_token(Kind) (make_token(lp, init, (Kind)))
+#	define mk_invalid(msg) (lp->data.dinvalid = (msg), make_token(lp, init, TK_INVALID))
 #	define LEX2(Char1, Char2, Tok2) \
 		case (Char1): { \
 			if(peek() == (Char2)) { \
 				next(); \
-				return mk_token((Tok2)); \
+				mk_token((Tok2)); return; \
 			} \
-			return mk_token((Char1)); \
+			mk_token((Char1)); return; \
 		}
 
 
@@ -133,9 +121,11 @@ Token lex_next(Lexer* lp) {
 		}
 		if(kind != 0) {
 			next();
-			return mk_token(kind);
+			mk_token(kind);
+			return;
 		}
-		return mk_token('.');
+		mk_token('.');
+		return;
 	}
 
 
@@ -163,23 +153,23 @@ Token lex_next(Lexer* lp) {
 			case '0' : lit = (i32)'\0'; break;
 			case '\\': lit = (i32)'\\'; break;
 			case 'b' : lit = (i32)'\b'; break;
-			default  : return mk_invalid("Invalid escape character");
+			default  : mk_invalid("Invalid escape character"); return;
 			}
  		} else if(peek() != '\'') {
  			lit = (i32)next();
  		} else {
- 			return mk_token(TK_INVALID);
+ 			mk_token(TK_INVALID);
+ 			return;
  		}
  		if(peek() != '\'') {
- 			return mk_invalid("Expecting \' but got something else");
+ 			mk_invalid("Expecting \' but got something else");
+ 			return;
  		}
  		next();
 
- 		Token t = {
-			.kind = TK_CHAR,
-			.tchar = lit,
-		};
-		return make_token(lp, init, t);
+		lp->data.dchar = lit;
+		make_token(lp, init, TK_CHAR);
+		return;
 	}
 	case '"': {
 		Buf(char) buf = {0};
@@ -194,7 +184,7 @@ Token lex_next(Lexer* lp) {
 				case '0' : buf_push(buf, '\0'); break;
 				case '\\': buf_push(buf, '\\'); break;
 				case 'b' : buf_push(buf, '\b'); break;
-				default  : return mk_invalid("Invalid escape character");
+				default  : mk_invalid("Invalid escape character"); return;
 				}
 
 				continue;
@@ -202,9 +192,10 @@ Token lex_next(Lexer* lp) {
 			buf_push(buf, ch);
 		}
 		buf_push(buf, '\0');
-		Token t = mk_token(TK_STRING);
-		t.tstr = buf;
-		return t;
+
+		lp->data.dstr = buf;
+		mk_token(TK_STRING);
+		return;
 	}
 
 	case '0': case '1': case '2': case '3':
@@ -263,19 +254,15 @@ Token lex_next(Lexer* lp) {
 
 		if(is_float) {
 			f64 num = strtod(buf, null);
-			Token t = {
-				.kind = TK_FLOAT,
-				.tfloat = num,
-			};
-			return make_token(lp, init, t);
+			lp->data.dfloat = num;
+			make_token(lp, init, TK_FLOAT);
+			return;
 		}
 
 		u64 num = strtoul(buf, null, base);
-		Token t = {
-			.kind = TK_FLOAT,
-			.tuint = num,
-		};
-		return make_token(lp, init, t);
+		lp->data.duint = num;
+		make_token(lp, init, TK_INT);
+		return;
 	}
 
 
@@ -294,20 +281,27 @@ Token lex_next(Lexer* lp) {
 			buf_push(buf, next());
 		}
 
+		buf_push(buf, '\0');
+
+		Token kw = get_keyword(buf);
+		if(kw != TK_INVALID) {
+			buf_dealloc(buf);
+			mk_token(kw);
+			return;
+		}
+
 
 		cstr intern = cstr_intern(&lp->intern, buf);
 		buf_dealloc(buf);
 
-		Token t = {
-			.kind = TK_IDENT,
-			.tident = intern,
-		};
-		return make_token(lp, init, t);
+		lp->data.dident = intern;
+		make_token(lp, init, TK_IDENT);
+		return;
 	}
 
 
 	case '_':
-	default: return mk_token(nxt);
+	default: mk_token(nxt); return;
 	}
 
 #	undef peek

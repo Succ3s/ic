@@ -33,68 +33,6 @@ void* buf__push(BufHdr* hdr, void* arr, isize el_size, isize push_count) {
 
 
 // ===========================
-// = Map                     =
-// ===========================
-
-isize map__find_index(MapHdr* hdr, u64 key) {
-	isize bufl = buf_len(hdr->keys);
-	for(isize i = 0; i < bufl; i++) {
-		if(key == hdr->keys[i]) {
-			return i;
-		}
-	}
-	return -1;
-}
-
-bool map__remove(MapHdr* hdr, void* map, u64 key, isize el_size) {
-	if(!map) { return false; }
-	isize idx = map__find_index(hdr, key);
-	if(idx == -1) { return false; }
-	u8* m = map;
-
-	// m[idx] = m[--hdr->buf.len];
-	memmove(m + idx*el_size, m + (--hdr->buf.len)*el_size, el_size);
-
-	buf_remove(hdr->keys, idx);
-	return true;
-}
-
-void* map__push(MapHdr* hdr, void* map, u64 key, isize el_size) {
-	if(!map) {
-		MapHdr* h = heap_allocz(sizeof(MapHdr) + BUF_CAP*el_size);
-		assert(h != null);
-		h->buf.cap = BUF_CAP;
-		buf_push(h->keys, key);
-		return h->buf.data;
-	}
-
-	isize bufl = buf_len(hdr->keys);
-	assert(bufl == hdr->buf.len);
-
-	for(isize i = 0; i < bufl; i++) {
-		if(key == hdr->keys[i]) {
-			goto end;
-		}
-	}
-
-
-	buf_push(hdr->keys, key);
-	buf__push(&hdr->buf, map, el_size, 1);
-
-	end:
-	return hdr->buf.data;
-}
-
-
-
-
-
-
-
-
-
-
-// ===========================
 // = String                  =
 // ===========================
 

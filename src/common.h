@@ -21,6 +21,16 @@
 // -- stddef needed for ptrdiff_t and size_t, could be replaced by manual checks
 // -- stdint could be replaced by manual checks
 
+//
+
+
+
+
+
+
+
+
+
 
 // ===========================
 // = primitives              =
@@ -49,6 +59,8 @@ typedef double f64;
 
 
 typedef const char* cstr;
+
+//
 
 
 
@@ -112,6 +124,9 @@ typedef const char* cstr;
 
 #define sizeof(t) ((isize)sizeof(t))
 
+//
+
+
 
 
 
@@ -135,47 +150,17 @@ struct BufHdr {
 };
 
 #define buf_h(t)             ((BufHdr*)(((u8*)(t)) - offsetof(BufHdr, data)))
-#define buf_push(t, v)       ((t) = buf__push(buf_h((t)), (t), sizeof(*(t)), 1), (t)[buf_h((t))->len++] = (v))
-#define buf_len(t)           ((t) ? buf_h((t))->len                         : 0)
-#define buf_remove(t, index) ((t) ? ((t)[(index)] = (t)[--buf_h((t))->len]) : 0)
-#define buf_dealloc(t)       ((t) ? heap_dealloc((buf_h((t))))              : 0)
+#define buf_push(t, ...)     ((t) = buf__push(buf_h((t)), (t), sizeof(*(t)), 1), (t)[buf_h((t))->len++] = (__VA_ARGS__))
+#define buf_len(t)           ((t) ? buf_h((t))->len                            : 0)
+#define buf_remove(t, index) ((t) ? ((t)[(index)] = (t)[--buf_h((t))->len], 1) : 0)
+#define buf_dealloc(t)       ((t) ? heap_dealloc((buf_h((t))))                 : 0)
+
 
 void* buf__push(BufHdr* hdr, void* arr, isize el_size, isize push_count);
 
+#define buf_write(Buf, Str) for(cstr s = (Str);*s;s++) { buf_push((Buf), *s); }
 
-
-
-
-
-
-
-
-
-// ===========================
-// = Map                     =
-// ===========================
-
-
-// TODO(pgs): this is not a good implementation, should redo it someday
-
-#define Map(T) T*
-
-typedef struct MapHdr MapHdr;
-struct MapHdr {
-	Buf(u64) keys;
-	BufHdr buf;
-};
-
-#define map_h(t) ((MapHdr*)(((u8*)(t)) - offsetof(MapHdr, buf) - offsetof(BufHdr, data)))
-#define map_push(t, key, v) (t = map__push(map_h((t)), (t), (key), sizeof(*(t))), (t)[map_h((t))->buf.len++] = (v))
-#define map_find_index(t, key) ((t) != null ? map__find_index(map_h((t)), (key)) : -1)
-#define map_remove(t, key) map__remove(map_h((t)), (t), (key), sizeof(*(t)))
-#define map_len(t) buf_len((t))
-
-
-isize map__find_index(MapHdr* hdr, u64 key);
-bool  map__remove(MapHdr* hdr, void* map, u64 key, isize el_size);
-void* map__push(MapHdr* hdr, void* map, u64 key, isize el_size);
+//
 
 
 
@@ -201,6 +186,8 @@ cstr cstr_clone(cstr s);
 
 typedef Buf(char*) StrIntern;
 cstr cstr_intern(StrIntern* h, cstr str);
+
+//
 
 
 
@@ -238,132 +225,5 @@ struct Sources {
 isize sources_add(Sources* srcs, cstr stream, cstr path);
 isize sources_find(Sources* srcs, Pos pos);
 Position sources_position(Sources* srcs, Pos p);
-
-
-
-
-
-
-
-
-
-
-// ===========================
-// = AST                     =
-// ===========================
-
-
-typedef struct Expr Expr;
-typedef struct InitList InitList;
-typedef struct IfExpr IfExpr;
-typedef struct SwitchCase SwitchCase;
-typedef struct SwitchExpr SwitchExpr;
-typedef struct Type Type;
-
-
-
-
-enum {
-	EXPR_INFIX, // + - * % > < >= <= == != ..  ..< orelse and or ->
-	EXPR_GET, // .
-	EXPR_POSTFIX, // .- .* .& .!
-	EXPR_UCAST,
-	EXPR_CAST,
-	EXPR_CALL,
-	EXPR_INDEX,
-	EXPR_TYPE_INIT,
-	EXPR_IF,
-	EXPR_SWITCH,
-
-	EXPR_COUNT
-};
-
-
-struct Expr {
-	u32 pos;
-	u16 flags;
-	u8 kind;
-	u8 op;
-	union {
-		struct {
-			Expr* l;
-			union {
-				Type*          eucast;   // expr '.(' type ')'
-				Type*          ecast;    // expr 'as' '('? type ')'?
-				Buf(Expr*)     ecall;    // expr '(' [ expr { ',' expr } ] ')'
-				Buf(InitList*) einit;    // expr '{' ... '}'
-				IfExpr*        eif;      // expr 'if' expr 'else' expr
-				SwitchExpr*    eswitch;  // expr 'switch' '{' ... '}'
-				Expr*          eindex;   // expr '[' expr ']'
-				Expr*          er;       // expr op expr
-				cstr           er_ident; // expr '.' ident
-			};
-		};
-		f64  efloat;
-		i64  eint;
-		bool ebool;
-		cstr eident;
-		cstr estr;
-	};
-};
-
-
-
-struct InitList {
-	Expr* l;
-	Expr* r;
-	bool index;
-};
-
-struct IfExpr {
-	Expr* l;
-	Expr* r;
-	Expr* cond;
-};
-
-enum {
-	CASE_ELSE,
-	CASE_EXPRL
-};
-
-struct SwitchCase {
-	union {
-		struct { cstr sname; Type* stype; };
-		Buf(Expr*) sexpr;
-	};
-	u32 pos;
-	u32 sname_pos; // 0 = else, 1 = EXPRL
-};
-
-struct SwitchExpr {
-	SwitchCase scase;
-	Expr* sif;
-	Expr* node;
-};
-
-struct Type {
-	isize tsize; // -1 = platform defined
-	isize align;
-	union {
-		Type*                          sptr;    //  *
-		Type*                          sparr;   // [*]
-		Type*                          sslice;  // []
-		struct { Type* t; Expr* len; } sarr;    // [N]
-		Map(Expr*)                     senum;   // enum{...}
-		Map(Type*)                     sstruct; // struct{...}
-		Buf(Type*)                     sunion;  // union{...}
-		cstr                           snamed;  // ident
-	};
-	u8 kind;
-};
-
-
-
-
-#if __STDC_VERSION__ >= 201112L /* c11 */
-	_Static_assert(EXPR_COUNT <= 256, "Expr tag must fit in an u8");
-#endif
-
-
 
 #endif

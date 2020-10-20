@@ -6,13 +6,16 @@
 
 
 TODO:
-- depency arrow
-- tuples
-- attrs
-	- no way to query them at runtime
-	- '@' ident '(' ? anything ? ')'
+- auto tuples
+- attr
+    - define syntax
+        - @name(args...)
+        - //$ name args
 - expression precedence
 - literals
+- leading comma and semicolon
+- (maybe) remove ranges as expr, just allow them on switch and for
+- named return types
 
 *)
 
@@ -26,11 +29,18 @@ item = proc
      | ( "import" ident string ";" ) 
      ;
 
+proc = "proc" ident proc_sig block;
 
-proc = "proc" ident "(" [ proc_arg { "," proc_arg } ] ")" [type] block;
-proc_arg = ident ":" type;
+proc_sig = "(" [ proc_arg { "," proc_arg } ] ")" [proc_ret];
+proc_arg = ident { "," ident } ":" type;
 
-type_def = ("alias" | "type") ident "=" type ";";
+proc_ret = "(" type { "," type } ")" | type;
+
+(*
+type NewType []int;
+type Alias = []int;
+*)
+type_def = "type" ident ["="] type ";";
 
 
 var = "var" ident ( ":" type ["=" expr] | "=" expr ) ";";
@@ -40,7 +50,7 @@ const = "const" ident [":" type] "=" expr ";";
 extern = "extern" ( extern_v, extern_p, extern_blk );
 
 extern_v = "var" ident ":" type ";";
-extern_p = "proc" ident "(" [ proc_arg { "," proc_arg } ] ")" [type] ";";
+extern_p = "proc" ident proc_sig ";";
 extern_blk = "{" { extern_v | extern_p } "}";
 
 
@@ -50,12 +60,11 @@ extern_blk = "{" { extern_v | extern_p } "}";
 
 
 
-type = type_noblk | type_blk;
-type_noblk = ident | proc_t | array_t | slice_t | ptr_t;
-proc_t     = "proc" "(" [ proc_arg { "," proc_arg } ] ")" [type];
-array_t    = "[" expr "]" type;
-slice_t    = "["      "]" type;
-ptr_t      = "*" type;
+type    = ident ["." ident] | proc_t | array_t | slice_t | ptr_t | type_blk;
+proc_t  = "proc" proc_sig;
+array_t = "[" expr "]" type;
+slice_t = "["      "]" type;
+ptr_t   = "*" type;
 
 type_blk = "struct" "{" [ struct_field { ";" struct_field } ] "}"
          | "union"  "{" [ type         { "," type         } ] "}"
@@ -72,60 +81,67 @@ stmt = ";"
      | var
      | const
      | [label] ( block | for | if | switch )
-     | "defer"    stmt (* only blocks and expr_s allowed *)
+     | "defer"    stmt (* allowed: block,for,if,switch,expr_s *)
      | "continue" ident  ";" (* label *)
      | "break"    ident  ";" (* label *)
      | "return"   expr   ";"
      |            expr_s ";"
      ;
 
-expr_s = expr { ("="|"+="|"-="|"*="|"/="|"%=") expr }; (* a = b = 10 *)
+expr_s = expr_s1 ( assign | call );
+expr_s1 = ident { "." ident | "[" expr "]" | ".*" };
+assign = { "," expr_s1 } { ("="|"+="|"-="|"*="|"/=") expr_list };
 
 block = "{" { stmt } "}";
-if = "if" expr block { "else" "if" expr block } [ "else" block ];
-for = "for" for_in block;
-for_in = expr (* continue if lvalue *) [ [ "," ident ] "in" expr ];
+if = "if" expr block { "elif" expr block } [ "else" block ];
+for = "for" ident [ "," ident ] "in" expr block;
+loop = "loop" [expr] block;
 
-switch = "switch" expr "{" { switch_case [ "if" expr ] block } "}";
-switch_case = "else" | expr "," expr;
-
+switch = "switch" [expr] "{" {switch_case} "}";
+switch_case = "case" [type | expr_list] ":" {stmt} ["falltrough" ";"];
 
 
 
 
 (*
 
-FIXME
+MAYBE FIXME
 
-9 (???) ::  number, ident, string, char, group, init, typeof
-8 (ltr) ::  ., call, index, .*
-8 (rtl) ::  -, not, &, cast
+9 (???) ::  number, string, char, group, init, ident, typeid
+8 (ltr) ::  ., call, slice, .*
+8 (rtl) ::  -, &, not, cast
 7 (ltr) ::  *, /, %
 6 (ltr) ::  +, -
 5 (ltr) ::  ==, !=, >, <, >=, <=
 4 (ltr) ::  and
 3 (ltr) ::  or
-2 (ltr) ::  orelse, .., ..<, if, switch
+2 (ltr) ::  .., ..<, ?:
 
 *)
 
-expr = orelse;
-orelse = or { ("orelse"|"if" expr "else"|"switch" switch_eblk|".."|"..<") or };
+expr = or "?" [expr] ":" expr;
 or = and { "or" and };
 and = cmp { "and" cmp };
 cmp = add { ("=="|"!="|">"|"<"|">="|"<=") add };
 add = mul { ("+"|"-") mul };
 mul = unop { ("*"|"/"|"%") unop };
-unop = ("-"|"not"|"&"|"(:" type ")") unop | get;
-get = lit { "." ident | "(" [ expr { "," expr } ] ")" | "[" expr "]" | ".*" };
+unop = ("-"|"&"|"cast" "(" type ")"|"not") unop | get;
+get = lit { "." ident | call | slice | ".*" };
 
-lit = number | char | string | "(" expr ")" | proc | init
-    | ident [ [ "." ident ] init ]
-    | "typeof" ( "(" expr ")" | "(:" type ")" );
+call = "(" [expr_list] ")";
+slice = "[" ( expr [":" [expr] ] | ":" [expr] ) "]";
+
+lit = number | string | char | "(" expr ")" |
+    | "." ident (* untyped enum *)
+    | ident ["." ident] [init]
+    | "[" [expr] "]" type init
+    | "typeid" "(" type ")"
+    ;
+
+init = initf|inits;
+inits = "{{" expr_list "}}";
+initf = "{" [ initf1 { "," initf1 } ] "}";
+initf1 = ("[" expr "]" | ident) { "[" expr "]" | "." ident } "=" expr;
 
 
-init = "{", [ initf { "," initf } ] "}";
-initf = ("[" expr "]" | expr) "=" expr;
-
-switch_eblk = "{" [ switch_eblk1 { "," switch_eblk1 }] "}";
-switch_eblk1 = switch_case [ "if" expr ] "=>" expr;
+expr_list = expr { "," expr };

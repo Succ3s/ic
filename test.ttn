@@ -158,3 +158,129 @@ proc test_types() {
 	assert(IntType  != int);
 	assert(IntAlias == int);
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+package main;
+
+import fmt "std:fmt";
+
+
+
+
+
+
+//
+//
+// control flow
+//
+//
+
+test_control_flow(x: X) bool {
+	var d: union{int, bool} = true;
+
+	@partial
+	switch 1 {
+	case 2, 3:  fmt.println("foo");
+	case 1..10: fmt.println("aaa");
+	}
+
+	if  x.(bool) != null                  { fmt.println("aaa"); }
+	for i in 0..1                         { fmt.println(i);     }
+	if  true { fmt.println("aaa"); } else { fmt.println("bbb"); }
+}
+
+
+//
+//
+// reflection
+//
+//
+
+import t "std:types";
+
+@internal
+proc print_struct(s: any) {
+	@partial
+	switch var x = t.type_info(s.id) {
+	case t.Named:
+		fmt.printf("struct %s { ", x.name);
+		var s, ok = x.inner.(t.Struct);
+		assert(ok);
+
+		print_fields(s);
+		fmt.println("}");
+	case t.Struct:
+		fmt.print("struct { ");
+		print_fields(x);
+		fmt.println("}");
+	}
+}
+
+proc print_fields(s: t.Struct) {
+	assert(s.fields >= 1);
+	fmt.print(s.names[0]);
+	for i in 1..s.fields {
+		fmt.print(", %s", s.names[i]);
+	}
+}
+
+
+
+
+
+
+proc foo() {
+	threads.spawn(data, proc(data: any) {
+		switch x := data {
+		case .Named
+		}
+	});
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+//
+//
+//	Alias & Type
+//
+//
+
+type  IntType  int;
+alias IntAlias int;
+test_types() {
+	assert(IntType  != int);
+	assert(IntAlias == int);
+}
+
+
+
+
+
+

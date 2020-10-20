@@ -3,7 +3,36 @@
 
 #include "common.h"
 
+#define KEYWORDS \
+	o(true) \
+	o(false) \
+	o(null) \
+	o(package) \
+	o(import) \
+	o(var) \
+	o(const) \
+	o(as) \
+	o(and) \
+	o(or) \
+	o(orelse) \
+	o(extern) \
+	o(proc) \
+	o(defer) \
+	o(if) \
+	o(else) \
+	o(for) \
+	o(in) \
+	o(break) \
+	o(continue) \
+	o(falltrough) \
+	o(type) \
+	o(alias) \
+	o(struct) \
+	o(enum) \
+	o(union)
+
 enum {
+	TK_INVALID = 0,
 	// : ; . ,
 	// ( ) [ ] { }
 	// + - * / %
@@ -30,7 +59,9 @@ enum {
 	TK_STRING,
 	TK_CHAR,
 
-	TK_INVALID
+	#define o(name) TK_ ## name ,
+	KEYWORDS
+	#undef o
 };
 
 
@@ -73,109 +104,78 @@ internal const cstr TOKEN_TO_STRING[] = {
 	[TK_STRING]     = "string",
 	[TK_CHAR]       = "char",
 
+	#define o(name) [TK_ ## name] = #name,
+	KEYWORDS
+	#undef o
+
 	[TK_INVALID]    = "INVALID",
 };
 
-cstr parse_number(cstr* inout_stream, i8 base, char* buf, i32 buf_size, i32* inout_len);
 
-
-typedef struct Token Token;
-struct Token {
-	u8 kind;
-	Pos pos;
-	union {
-		cstr tinvalid;
-		cstr tstr;
-		cstr tident;
-		f64  tfloat;
-		u64  tuint;
-		i32  tchar;
-	};
-
-};
+typedef u8 Token;
 
 typedef struct Lexer Lexer;
 struct Lexer {
 	i32 start;
 	cstr begin, cursor;
 	i64 line;
-	Token last;
+	
+	union {
+		cstr dinvalid;
+		cstr dstr;
+		cstr dident;
+		f64  dfloat;
+		u64  duint;
+		i32  dchar;
+	} data;
+	Pos pos;
+	Token tok;
+
+
 	StrIntern intern;
 };
 
-#define KEYWORDS \
-	o(true) \
-	o(false) \
-	o(null) \
-	o(package) \
-	o(import) \
-	o(var) \
-	o(const) \
-	o(as) \
-	o(and) \
-	o(or) \
-	o(orelse) \
-	o(proc) \
-	o(defer) \
-	o(if) \
-	o(else) \
-	o(for) \
-	o(in) \
-	o(break) \
-	o(continue) \
-	o(falltrough) \
-	o(type) \
-	o(alias) \
-	o(struct) \
-	o(enum) \
-	o(union)
-
-#define o(name) cstr t ## name;
-KEYWORDS
-#undef o
-int init_keywords(Lexer* l);
-bool is_keyword(cstr interned);
-
-Lexer lex_init(Source* d);
-
-Token lex_next(Lexer* lp);
+Lexer lex(Source* d);
+void advance(Lexer* lp);
 
 #if 0
+#define TMAIN test_lexer
 int test_lexer(int argc, cstr* argv) {
 	Sources s = {0};
 	isize idx = sources_add(&s, "10 _ 1_0 0x_10 \"Ffo\\too\" 10.4e-2 foobar if foo_b foo3231 'a' 'b '\\t' .. .& + = += != !", "build.ttn");
-	Lexer l = lex_init(&s.list[idx]);
-	Token tk = lex_next(&l);
-	for(;tk.kind != 0;) {
-		cstr ss = TOKEN_TO_STRING[tk.kind];
+	Lexer l = lex(&s.list[idx]);
+	advance(&l);
+	for(;l.tok != 0;) {
+		cstr ss = TOKEN_TO_STRING[l.tok];
 		#define PRINTT "Knd: %10s, Pos: %d"
-		switch(tk.kind) {
+		switch(l.tok) {
 		// TODO(pgs): print utf8
 		case TK_CHAR:
-			printf(PRINTT ", Chr: '%c' \n", ss, tk.pos, tk.tchar);
+			printf(PRINTT ", Chr: '%c' \n", ss, l.pos, l.data.dchar);
 			break;
 		case TK_STRING:
-			printf(PRINTT ", Str: '%s' \n", ss, tk.pos, tk.tstr);
+			printf(PRINTT ", Str: '%s' \n", ss, l.pos, l.data.dstr);
 			break;
 		case TK_IDENT:
-			printf(PRINTT ", Idn: '%s', Kw: %d \n", ss, tk.pos, tk.tident, is_keyword(tk.tident));
+			printf(PRINTT ", Idn: '%s'\n", ss, l.pos, l.data.dident);
 			break;
 		case TK_FLOAT:
-			printf(PRINTT ", Flt: '%lf'\n", ss, tk.pos, tk.tfloat);
+			printf(PRINTT ", Flt: '%lf'\n", ss, l.pos, l.data.dfloat);
 			break;
 		case TK_INT:
-			printf(PRINTT ", Unt: '%li'\n", ss, tk.pos, tk.tuint);
+			printf(PRINTT ", Unt: '%li'\n", ss, l.pos, l.data.duint);
 			break;
 		case TK_INVALID:
-			printf(PRINTT ", Inv: '%s' \n", ss, tk.pos, tk.tinvalid);
+			printf(PRINTT ", Inv: '%s' \n", ss, l.pos, l.data.dinvalid);
 			break;
 		default:
-			printf(PRINTT "\n", ss, tk.pos);
+			printf(PRINTT "\n", ss, l.pos);
 			break;
 		}
 
-		tk = lex_next(&l);
+		advance(&l);
 	}
+	printf("%d", buf_len(l.intern));
 }
 #endif
 
